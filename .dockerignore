@@ -1,0 +1,7 @@
+.circleci
+ci_scripts
+container_environments
+kubernetes
+kube-prometheus
+venv
+.idea

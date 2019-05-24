@@ -1,0 +1,65 @@
+version: '3.4'
+services:
+
+  redis:
+    image: redis
+    container_name: stockpicker_redis
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
+
+  rabbitmq:
+    image: rabbitmq:3.6
+    container_name: stockpicker_rabbitmq
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
+
+  postgres:
+    image: postgres:9.4
+    container_name: stockpicker_postgres
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
+
+  webapp:
+    image: webapp
+    container_name: stockpicker_webapp
+    ports:
+     - 8080:8001
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
+
+  worker:
+    image: worker
+    container_name: stockpicker_worker
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
+
+  beat:
+    image: worker
+    container_name: stockpicker_beat
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    command: [celery, beat, --app=stockpicker.celery, --loglevel=INFO]
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
