@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 
+from celery.schedules import crontab
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -37,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework',
 
     'stockpicker',
     'tickers',
@@ -97,7 +101,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Chicago'
 
 USE_I18N = True
 
@@ -138,9 +142,22 @@ DATABASES = {
 
 
 #####
+# Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'redis_cache.RedisCache',
+        'LOCATION': 'redis://{redis_host}:{redis_port}/{redis_namespace}'.format(
+            redis_host=os.getenv('REDIS_HOST', 'localhost'),
+            redis_port=os.getenv('REDIS_PORT', 6379),
+            redis_namespace=1)
+    },
+}
+
+
+#####
 # Celery settings
 
-CELERY_BROKER_URL = "amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}/{rabbitmq_namespace}".format(
+CELERY_BROKER_URL = 'amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}/{rabbitmq_namespace}'.format(
     rabbitmq_user=os.getenv('RABBITMQ_DEFAULT_USER', 'local_user'),
     rabbitmq_password=os.getenv('RABBITMQ_DEFAULT_PASS', 'rabbitmq_password'),
     rabbitmq_host=os.getenv('RABBITMQ_HOST', 'localhost'),
@@ -148,10 +165,10 @@ CELERY_BROKER_URL = "amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:
     rabbitmq_namespace=os.getenv('RABBITMQ_DEFAULT_VHOST', 'local_vhost')
 )
 
-CELERY_RESULT_BACKEND = "redis://{redis_host}:{redis_port}/{redis_namespace}".format(
+CELERY_RESULT_BACKEND = 'redis://{redis_host}:{redis_port}/{redis_namespace}'.format(
     redis_host=os.getenv('REDIS_HOST', 'localhost'),
     redis_port=os.getenv('REDIS_PORT', 6379),
-    redis_namespace=os.getenv('REDIS_NAMESPACE', 0)
+    redis_namespace=0
 )
 
 CELERY_ALWAYS_EAGER = False
@@ -161,7 +178,6 @@ CELERYD_MAX_TASKS_PER_CHILD = 1
 
 # CELERY_TIMEZONE = 'America/Chicago'
 
-from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
     'quotes-hourly-update': {
         'task': 'tickers.tasks.update_all_tickers',

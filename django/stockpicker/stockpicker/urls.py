@@ -31,5 +31,6 @@ urlpatterns = [
     path('health/app/', AppHealthCheckView.as_view(), name="health-check-app"),
     path('health/celery/', CeleryHealthCheckView.as_view(), name="health-check-celery"),
     path('health/database/', DatabaseHealthCheckView.as_view(), name="health-check-database"),
+    path('health/tickers-loaded/', DatabaseHealthCheckView.as_view(), name="health-check-tickers-loaded"),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

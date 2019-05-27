@@ -43,7 +43,7 @@ class Quote(models.Model):
     def serialize(self):
         return {
             'symbol': self.ticker.symbol,
-            'date': self.date,
+            'date': self.date.strftime('%Y-%m-%d'),
             'ac': round(self.adj_close, settings.DECIMAL_DIGITS),
             'iac': round(self.index_adj_close, settings.DECIMAL_DIGITS),
             'sac': round(self.scaled_adj_close, settings.DECIMAL_DIGITS),

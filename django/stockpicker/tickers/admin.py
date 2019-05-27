@@ -49,5 +49,6 @@ class QuoteAdmin(admin.ModelAdmin):
     ordering = ('ticker', '-date')
     list_filter = ('ticker__symbol', 'date')
 
+
 admin.site.register(Ticker, TickerAdmin)
 admin.site.register(Quote, QuoteAdmin)

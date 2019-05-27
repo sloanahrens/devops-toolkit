@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, date
+from django.utils.timezone import datetime, timedelta
 
 from django.conf import settings
 
@@ -14,13 +14,18 @@ def update_ticker_data(symbol, force=False):
 
         ticker, _ = Ticker.objects.get_or_create(symbol=ticker_symbol)
 
-        last_business_day = date.today()
+        last_business_day = datetime.today().date()
         # weekday() gives 0 for Monday through 6 for Sunday
         while last_business_day.weekday() > 4:
             last_business_day = last_business_day + timedelta(days=-1)
 
+        # if last_business_day > ticker.latest_quote_date():
+
         # don't waste work
         if force_update or ticker.latest_quote_date() is None or ticker.latest_quote_date() < last_business_day:
+
+            print('latest_quote_date: {0}, last_business_day: {1}'.format(ticker.latest_quote_date(),
+                                                                          last_business_day))
 
             print('Updating: {0}'.format(ticker_symbol))
 
@@ -28,8 +33,10 @@ def update_ticker_data(symbol, force=False):
             start = today + timedelta(weeks=-settings.WEEKS_TO_DOWNLOAD)
 
             new_quotes = dict()
+            yahoo_data = web.get_data_yahoo(ticker_symbol, start, today)
+            print(yahoo_data)
             try:
-                for row in web.get_data_yahoo(ticker_symbol, start, today).iterrows():
+                for row in yahoo_data.iterrows():
                     quote_date = row[0].strftime('%Y-%m-%d')
                     quote_data = row[1].to_dict()
                     new_quotes[quote_date] = quote_data
@@ -42,7 +49,7 @@ def update_ticker_data(symbol, force=False):
                 try:
                     quote, _ = Quote.objects.get_or_create(ticker=ticker, date=quote_date)
                 except Quote.MultipleObjectsReturned:
-                    quote = Quote.objects.find(ticker=ticker, date=quote_date).first()
+                    quote = Quote.objects.filter(ticker=ticker, date=quote_date).first()
                 quote.high = quote_data['High']
                 quote.low = quote_data['Low']
                 quote.open = quote_data['Open']

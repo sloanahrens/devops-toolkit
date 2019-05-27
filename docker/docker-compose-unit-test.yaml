@@ -1,0 +1,20 @@
+version: '3.4'
+services:
+
+  unit-test:
+    image: webapp
+    container_name: stockpicker_webapp_unit_test
+    links:
+      - postgres
+    depends_on:
+      - postgres
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml
+    working_dir: /src
+    entrypoint: bash -c "wait-for-it.sh postgres:5432 -- python manage.py test"
+
+  postgres:
+    image: postgres:9.4
+    container_name: stockpicker_postgres
+    env_file:
+     - ../container_environments/docker-compose-test-stack.yaml

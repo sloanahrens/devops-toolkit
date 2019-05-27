@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_412_PRECONDITION_FAILED, HTTP_200_OK
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import AllowAny
 
 from tickers.models import Ticker, Quote
 from tickers.utility import update_ticker_data
@@ -15,20 +16,9 @@ class PickerPageView(TemplateView):
     template_name = 'tickers/picker.html'
 
 
-class UnsafeSessionAuthentication(SessionAuthentication):
-
-    def authenticate(self, request):
-        http_request = request._request
-        user = getattr(http_request, 'user', None)
-
-        if not user or not user.is_active:
-            return None
-
-        return user, None
-
-
 class SearchTickerDataView(APIView):
-    authentication_classes = (UnsafeSessionAuthentication,)
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (AllowAny,)
 
     def post(self, request, format=None):
 
@@ -49,7 +39,8 @@ class SearchTickerDataView(APIView):
 
 
 class TickersLoadedView(APIView):
-    authentication_classes = (UnsafeSessionAuthentication,)
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (AllowAny,)
 
     def get(self, request, format=None):
 
@@ -57,34 +48,36 @@ class TickersLoadedView(APIView):
 
 
 class GetRecommendationsView(APIView):
-    authentication_classes = (UnsafeSessionAuthentication,)
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (AllowAny,)
 
     def get(self, request, format=None):
 
         try:
-            ticker = Ticker.objects.get(symbol=settings.INDEX_TICKER)
+            index_ticker = Ticker.objects.get(symbol=settings.INDEX_TICKER)
         except Ticker.DoesNotExist:
             return Response({'success': False, 'error': 'Ticker "{0}" does not exist'.format(settings.INDEX_TICKER)},
                             status=HTTP_412_PRECONDITION_FAILED)
 
-        if ticker.latest_quote_date() is None:
+        if index_ticker.latest_quote_date() is None:
             return Response({'success': False, 'error': 'No Quotes available.'}, status=HTTP_412_PRECONDITION_FAILED)
 
-        sell_hits = Quote.objects.filter(date=ticker.latest_quote_date(),
+        sell_hits = Quote.objects.filter(date=index_ticker.latest_quote_date(),
                                          sac_to_sacma_ratio__gt=1).order_by('-sac_to_sacma_ratio')
-        buy_hits = Quote.objects.filter(date=ticker.latest_quote_date(),
+        buy_hits = Quote.objects.filter(date=index_ticker.latest_quote_date(),
+                                        sac_to_sacma_ratio__gt=0,
                                         sac_to_sacma_ratio__lt=1).order_by('sac_to_sacma_ratio')
-
         return Response({
             'success': True,
-            'latest_data_date': ticker.latest_quote_date(),
-            'sell_hits': [quote.serialize() for quote in list(sell_hits)[0:25]],
-            'buy_hits': [quote.serialize() for quote in list(buy_hits)[-25:-1]]
+            'latest_data_date': index_ticker.latest_quote_date().strftime('%Y-%m-%d'),
+            'sell_hits': [quote.serialize() for quote in list(sell_hits)[:25]],
+            'buy_hits': [quote.serialize() for quote in list(buy_hits)[-25:]]
         }, status=HTTP_200_OK)
 
 
 class AddTickerView(APIView):
-    authentication_classes = (UnsafeSessionAuthentication,)
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (AllowAny,)
 
     def post(self, request, format=None):
 
