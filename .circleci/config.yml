@@ -1,5 +1,5 @@
 defaults: &defaults
-  working_directory: /data
+  working_directory: /src
   docker:
     - image: circleci/python:3.6.8-stretch
 
