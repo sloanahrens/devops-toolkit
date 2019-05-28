@@ -35,23 +35,9 @@ services:
     env_file:
      - ../container_environments/docker-compose-test-stack.yaml
 
-  worker1:
+  worker:
     image: celeryworker
-    container_name: stockpicker_worker1
-    links:
-      - postgres
-      - rabbitmq
-      - redis
-    depends_on:
-      - postgres
-      - rabbitmq
-      - redis
-    env_file:
-     - ../container_environments/docker-compose-test-stack.yaml
-
-  worker2:
-    image: celeryworker
-    container_name: stockpicker_worker2
+    container_name: stockpicker_worker
     links:
       - postgres
       - rabbitmq
