@@ -1,7 +1,6 @@
 defaults: &defaults
-  working_directory: /data
   docker:
-    - image: circleci/python:3.6.8-stretch
+    - image: circleci/python:3.6.8-jessie
 
 version: 2
 jobs:
@@ -13,7 +12,6 @@ jobs:
       - run:
           name: "Pip Install"
           command: pip install flake8>=3.7.7 --user circleci
-
       - run:
           name: "Python Linting"
           command: cd django/stockpicker && python -m flake8 --ignore E501
@@ -27,16 +25,32 @@ jobs:
           name: Install Dependencies
           command: |
             set -x
-            ./ci_scripts/ci_dependency_install_ubuntu.sh
+            sudo mkdir -p /caches
+            sudo chown -R circleci:circleci /caches
+            sudo apt-get -y update
+            sudo apt-get -y install jq curl
+            # kubectl
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            sudo mv ./kubectl /usr/local/bin/
+            # docker client
+            VER="17.03.0-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            sudo mv /tmp/docker/* /usr/bin
+            # docker-compose
+            sudo curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            # aws
+            pip install awscli --user circleci
       - restore_cache:
-          key: gitops-{{ checksum "django/requirements.txt" }}
+          key: v1-{{ .Branch }}-{{ checksum "django/requirements.txt" }}
           paths:
             - /caches/baseimage.tar
       - run:
           name: Load image cache
           command: |
             set -x
-            mkdir -p /caches
             if [ -e /caches/baseimage.tar ]; then
               docker load -i /caches/baseimage.tar
             fi
@@ -51,7 +65,7 @@ jobs:
             set -x
             docker save -o /caches/baseimage.tar baseimage
       - save_cache:
-          key: gitops-{{ checksum "django/requirements.txt" }}
+          key: v1-{{ .Branch }}-{{ checksum "django/requirements.txt" }}
           paths:
             - /caches/baseimage.tar
       - run:
@@ -101,6 +115,4 @@ workflows:
   build-and-deploy:
     jobs:
       - python_linting
-      - image_build_and_tests_no_push:
-          requires:
-            - python_linting
+      - image_build_and_tests_no_push

@@ -10,7 +10,6 @@ function run_install {
     # aws cli
 #    apt-get -y install python-dev python-pip
 #    pip install awscli --allow-all-external
-    pip install awscli
     # kubectl
     curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
     chmod +x ./kubectl
