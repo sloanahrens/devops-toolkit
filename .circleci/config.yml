@@ -12,7 +12,6 @@ jobs:
       - run:
           name: "Pip Install"
           command: pip install flake8>=3.7.7 --user circleci
-
       - run:
           name: "Python Linting"
           command: cd django/stockpicker && python -m flake8 --ignore E501
@@ -26,6 +25,8 @@ jobs:
           name: Install Dependencies
           command: |
             set -x
+            sudo mkdir -p /caches
+            sudo chown -R circleci:circleci /caches
             sudo apt-get -y update
             sudo apt-get -y install jq curl
             # kubectl
@@ -43,15 +44,13 @@ jobs:
             # aws
             pip install awscli --user circleci
       - restore_cache:
-          key: gitops-{{ checksum "django/requirements.txt" }}
+          key: v1-{{ .Branch }}-{{ checksum "django/requirements.txt" }}
           paths:
             - /caches/baseimage.tar
       - run:
           name: Load image cache
           command: |
             set -x
-            sudo mkdir -p /caches
-            sudo chown -R circleci:circleci /caches
             if [ -e /caches/baseimage.tar ]; then
               docker load -i /caches/baseimage.tar
             fi
@@ -66,7 +65,7 @@ jobs:
             set -x
             docker save -o /caches/baseimage.tar baseimage
       - save_cache:
-          key: gitops-{{ checksum "django/requirements.txt" }}
+          key: v1-{{ .Branch }}-{{ checksum "django/requirements.txt" }}
           paths:
             - /caches/baseimage.tar
       - run:
