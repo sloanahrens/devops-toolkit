@@ -16,19 +16,26 @@ jobs:
           name: "Python Linting"
           command: cd django/stockpicker && python -m flake8 --ignore E501
 
-  image_build_and_tests_no_push:
+  image_build_test_push:
     <<: *defaults
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 17.03.0-ce
       - run:
           name: Install Dependencies
           command: |
             set -x
+            # cache directory
             sudo mkdir -p /caches
             sudo chown -R circleci:circleci /caches
+            # apt dependencies
+            sudo apt-get -y install software-properties-common
             sudo apt-get -y update
             sudo apt-get -y install jq curl
+            # aws cli
+            pip install --upgrade pip --user circleci
+            pip --no-cache-dir install --upgrade awscli --user circleci
             # kubectl
             curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
             chmod +x ./kubectl
@@ -41,14 +48,12 @@ jobs:
             # docker-compose
             sudo curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
-            # aws
-            pip install awscli --user circleci
       - restore_cache:
           key: v1-{{ .Branch }}-{{ checksum "django/requirements.txt" }}
           paths:
             - /caches/baseimage.tar
       - run:
-          name: Load image cache
+          name: Load Base Image From Cache
           command: |
             set -x
             if [ -e /caches/baseimage.tar ]; then
@@ -60,7 +65,7 @@ jobs:
             set -x
             docker build --cache-from=baseimage -t baseimage -f docker/baseimage/Dockerfile .
       - run:
-          name: Save baseimage image
+          name: Save Base Image To Cache
           command: |
             set -x
             docker save -o /caches/baseimage.tar baseimage
@@ -100,19 +105,33 @@ jobs:
             docker-compose -f docker/docker-compose-unit-test.yaml run unit-test
             docker-compose -f docker/docker-compose-unit-test.yaml down
       - run:
-          name: Run Integration Tests
+          name: Run Integration Test Script Against Docker-Compose Stack
           command: |
             set -x
             docker-compose -f docker/docker-compose-local-image-stack.yaml up -d
             docker run -e SERVICE="localhost:8001" --network container:stockpicker_webapp stacktest ./integration-tests.sh \
                 || \
                 (echo "*** WORKER LOGS:" && echo "$(docker logs stockpicker_worker)" && \
-                echo "*** WEBAPP LOGS:" && echo "$(docker logs stockpicker_webapp)")
+                echo "*** WEBAPP LOGS:" && echo "$(docker logs stockpicker_webapp)" && exit 1)
             docker-compose -f docker/docker-compose-local-image-stack.yaml down
+      - run:
+          name: Push Docker Images
+          command: |
+            set -x
+            export PATH="$PATH:$(python -m site --user-base)/bin"
+            $(aws ecr get-login --no-include-email --region us-east-2)
+            IMAGE_TAG=$(echo "$CIRCLE_BRANCH" | sed 's/[^a-zA-Z0-9]/-/g'| sed -e 's/\(.*\)/\L\1/')
+            REPO_ID=421987441365
+            docker tag webapp $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/webapp:$IMAGE_TAG
+            docker tag celerybeat $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
+            docker tag celeryworker $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+            docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/webapp:$IMAGE_TAG
+            docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
+            docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
 
 workflows:
   version: 2
   build-and-deploy:
     jobs:
       - python_linting
-      - image_build_and_tests_no_push
+      - image_build_test_push
