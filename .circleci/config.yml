@@ -1,6 +1,6 @@
 defaults: &defaults
   docker:
-    - image: circleci/python:3.6.8-jessie
+    - image: sloanahrens/devops-toolkit-ci-dev-env:0.0.1
 
 version: 2
 jobs:
@@ -23,31 +23,10 @@ jobs:
       - setup_remote_docker:
           version: 17.03.0-ce
       - run:
-          name: Install Dependencies
+          name: Cache Directory
           command: |
             set -x
-            # cache directory
-            sudo mkdir -p /caches
-            sudo chown -R circleci:circleci /caches
-            # apt dependencies
-            sudo apt-get -y install software-properties-common
-            sudo apt-get -y update
-            sudo apt-get -y install jq curl
-            # aws cli
-            pip install --upgrade pip --user circleci
-            pip --no-cache-dir install --upgrade awscli --user circleci
-            # kubectl
-            curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-            chmod +x ./kubectl
-            sudo mv ./kubectl /usr/local/bin/
-            # docker client
-            VER="17.03.0-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            sudo mv /tmp/docker/* /usr/bin
-            # docker-compose
-            sudo curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
+            mkdir -p /caches
       - restore_cache:
           key: v1-{{ .Branch }}-{{ checksum "django/requirements.txt" }}
           paths:
