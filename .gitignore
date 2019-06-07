@@ -93,3 +93,6 @@ notes.txt
 pg_data
 celerybeat-schedule
 .idea
+*.pem
+.terraform
+kubecfg.yaml

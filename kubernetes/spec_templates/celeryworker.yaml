@@ -1,0 +1,49 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: celeryworker
+  labels:
+    stack: STACK_NAME
+    type: django-app
+    service: celeryworker
+spec:
+  clusterIP: None
+  selector:
+    type: django-app
+    service: celeryworker
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: celeryworker
+  labels:
+    stack: STACK_NAME
+spec:
+  serviceName: celeryworker
+  replicas: WORKER_REPLICAS
+  selector:
+    matchLabels:
+      type: django-app
+      service: celeryworker
+  template:
+    metadata:
+      labels:
+        type: django-app
+        service: celeryworker
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: worker
+        image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:IMAGE_TAG
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: stack-environment-variables
+        env:
+        - name: STACKNAME
+          value: STACK_NAME
+        - name: IMAGETAG
+          value: IMAGE_TAG
+        - name: ENVFILE
+          value: ENV_FILE

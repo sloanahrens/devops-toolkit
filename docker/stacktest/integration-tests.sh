@@ -1,15 +1,13 @@
 #!/bin/bash
 
-# set -x
-
 
 function wait_for_and_test_endpoint {
     period=10
-    limit=12
+    limit=18
     looper=${limit}
     # wait for the app to be all hooked up and working
     url="$1"
-    res=$(curl -XGET -s ${url} -H 'Content-Type: application/json')
+    res=$(curl -XGET -s ${url} -H 'Content-Type: application/json' -H 'Cache-Control: no-cache')
     status=$(echo ${res} | jq '.status' || echo 'nada')
     while [[ "$status" != '"healthy"' ]]; do
         echo "url: $url; res: $res; status: $status"
@@ -33,9 +31,6 @@ function wait_for_and_test_endpoint {
     fi
 }
 
-wait-for-it.sh -t 60 redis:6379
-wait-for-it.sh -t 60 rabbitmq:5672
-wait-for-it.sh -t 180 postgres:5432
 
 echo "SERVICE: $SERVICE"
 

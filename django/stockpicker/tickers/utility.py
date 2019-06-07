@@ -34,7 +34,6 @@ def update_ticker_data(symbol, force=False):
 
             new_quotes = dict()
             yahoo_data = web.get_data_yahoo(ticker_symbol, start, today)
-            print(yahoo_data)
             try:
                 for row in yahoo_data.iterrows():
                     quote_date = row[0].strftime('%Y-%m-%d')

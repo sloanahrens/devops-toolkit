@@ -1,0 +1,63 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    stack: STACK_NAME
+spec:
+  clusterIP: None
+  ports:
+  - port: 5432
+  selector:
+    type: postgres
+    service: postgres
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    stack: STACK_NAME
+spec:
+  serviceName: postgres
+  selector:
+    matchLabels:
+      type: postgres
+      service: postgres
+  template:
+    metadata:
+      labels:
+        type: postgres
+        service: postgres
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: postgres
+        image: postgres:9.4
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: stack-environment-variables
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pg-data
+      volumes:
+      - name: pg-data
+        persistentVolumeClaim:
+          claimName: postgres-data
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: postgres-data
+  labels:
+    stack: STACK_NAME
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "aws-efs"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
