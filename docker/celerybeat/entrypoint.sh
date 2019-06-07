@@ -2,9 +2,9 @@
 set -e
 
 echo "------------------"
-echo "Sleep 40 seconds..."
+echo "Sleep three minutes..."
 echo "------------------"
-sleep 40
+sleep 180
 
 echo "------------------"
 echo "Start Celery Beat..."

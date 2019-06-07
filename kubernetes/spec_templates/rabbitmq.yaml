@@ -1,0 +1,54 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-management
+  labels:
+    stack: STACK_NAME
+spec:
+  ports:
+  - port: 15672
+  selector:
+    type: rabbitmq
+    service: rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  labels:
+    stack: STACK_NAME
+spec:
+  clusterIP: None
+  ports:
+  - port: 5672
+  selector:
+    type: rabbitmq
+    service: rabbitmq
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  labels:
+    stack: STACK_NAME
+spec:
+  serviceName: rabbitmq
+  selector:
+    matchLabels:
+      type: rabbitmq
+      service: rabbitmq
+  template:
+    metadata:
+      labels:
+        type: rabbitmq
+        service: rabbitmq
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3.6
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: stack-environment-variables

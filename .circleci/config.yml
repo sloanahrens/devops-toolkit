@@ -1,9 +1,56 @@
 defaults: &defaults
   docker:
-    - image: sloanahrens/devops-toolkit-ci-dev-env:0.0.1
+    - image: sloanahrens/devops-toolkit-ci-dev-env:0.0.3
 
 version: 2
 jobs:
+
+  update_kubernetes_cluster:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Terraform Apply
+          command: |
+            set -x
+            cd kubernetes/us-east-2/cluster
+            terraform init
+            terraform plan
+            terraform apply --auto-approve
+      - run:
+          name: Kops Rolling Update
+          command: |
+            set -x
+            CLUSTER_NAME=devops-toolkit-us-east-2.k8s.local
+            BUCKET_NAME=devops-toolkit-k8s-state-us-east-2
+            cd kubernetes/us-east-2/cluster
+            gpg --decrypt --batch --yes --passphrase $KUBECONFIG_PASSPHRASE kubecfg.yaml.gpg > kubecfg.yaml
+            export KUBECONFIG=$PWD/kubecfg.yaml
+            kops rolling-update cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME --yes
+      - run:
+          name: Kops Validate Cluster
+          command: |
+            set -x
+            sleep 30
+            CLUSTER_NAME=devops-toolkit-us-east-2.k8s.local
+            BUCKET_NAME=devops-toolkit-k8s-state-us-east-2
+            cd kubernetes/us-east-2/cluster
+            gpg --decrypt --batch --yes --passphrase $KUBECONFIG_PASSPHRASE kubecfg.yaml.gpg > kubecfg.yaml
+            export KUBECONFIG=$PWD/kubecfg.yaml
+            kops validate cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME
+      - run:
+          name: Update K8s Dependencies
+          command: |
+            set -x
+            cd kubernetes/us-east-2/cluster
+            gpg --decrypt --batch --yes --passphrase $KUBECONFIG_PASSPHRASE kubecfg.yaml.gpg > kubecfg.yaml
+            export KUBECONFIG=$PWD/kubecfg.yaml
+            cd ../../..
+            kubectl apply -f kubernetes/specs/kubernetes-dashboard.yaml
+            kubectl apply -f kubernetes/specs/external-dns.yaml
+            kubectl apply -f kubernetes/specs/nginx-ingress-controller.yaml
+            kubectl apply -f kubernetes/us-east-2/specs/nginx-ingress-load-balancer.yaml
+            kubectl apply -f kubernetes/us-east-2/specs/aws-efs.yaml
 
   python_linting:
     <<: *defaults
@@ -112,5 +159,8 @@ workflows:
   version: 2
   build-and-deploy:
     jobs:
+      - update_kubernetes_cluster
       - python_linting
-      - image_build_test_push
+      - image_build_test_push:
+          requires:
+            - python_linting

@@ -1,0 +1,41 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    stack: STACK_NAME
+spec:
+  clusterIP: None
+  ports:
+  - port: 6379
+  selector:
+    type: redis
+    service: redis
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: redis
+  labels:
+    stack: STACK_NAME
+spec:
+  serviceName: redis
+  selector:
+    matchLabels:
+      type: redis
+      service: redis
+  template:
+    metadata:
+      labels:
+        type: redis
+        service: redis
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: redis
+        image: redis
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: stack-environment-variables

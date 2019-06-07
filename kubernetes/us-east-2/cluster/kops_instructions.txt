@@ -1,0 +1,180 @@
+#####
+# 0) setup
+#
+#####
+KUBECONFIG_PASSPHRASE=REPLACE
+
+export AWS_ACCESS_KEY_ID=REPLACE
+export AWS_SECRET_ACCESS_KEY=REPLACE
+
+export REGION=us-east-2
+export ZONES=${REGION}b
+export CLUSTER_NAME=devops-toolkit-${REGION}.k8s.local
+export BUCKET_NAME=devops-toolkit-k8s-state-${REGION}
+
+
+#####
+# set up remote terraform state
+cd $REGION/remote_state
+terraform init
+terraform apply --auto-approve
+
+#####
+# make keys for cluster
+
+cd $REGION/cluster
+
+# create keys
+aws ec2 create-key-pair --key-name $REGION | jq -r '.KeyMaterial' >$REGION.pem
+
+chmod 400 $REGION.pem
+
+ssh-keygen -y -f $REGION.pem >$REGION.pub
+
+# create S3 bucket
+aws s3api create-bucket \
+    --region=$REGION \
+    --bucket $BUCKET_NAME \
+    --create-bucket-configuration \
+    LocationConstraint=$REGION
+
+
+
+#####
+# to destroy cluster and start over:
+# (If you can't get the VPC deleted, check for load balancers!)
+# terraform destroy --auto-approve && kops delete cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME --yes
+
+
+
+# 1) create the cluster
+kops create cluster \
+    --cloud=aws \
+    --name $CLUSTER_NAME \
+    --state s3://$BUCKET_NAME \
+    --master-count 1 \
+    --node-count 2 \
+    --node-size t2.medium \
+    --master-size c4.large \
+    --zones $ZONES \
+    --master-zones $ZONES \
+    --ssh-public-key $REGION.pub \
+    --authorization RBAC \
+    --kubernetes-version v1.11.9 \
+    --topology private \
+    --networking calico \
+    --out=. \
+    --target=terraform
+
+
+# 2) apply changes, export cluster config, do the rolling update to get local kubeconfig updated
+
+terraform init \
+  && terraform plan \
+  && terraform apply --auto-approve
+
+#####
+# make sure that export kubecfg before applying terraform so that LC is configured with exported cfg,
+# and export cluster config for source control (encrypt before pushing)
+#####
+export KUBECONFIG=$PWD/kubecfg.yaml
+
+kops export kubecfg --name $CLUSTER_NAME --state s3://$BUCKET_NAME
+
+kops update cluster $CLUSTER_NAME --state s3://$BUCKET_NAME --target=terraform --out=.
+
+
+
+# 3) add additional policies so external-dns can create route53 entries:
+
+cp node_iam_policy.txt data/aws_iam_role_policy_nodes.devops-toolkit-$REGION.k8s.local_policy
+
+
+# 4)  rolling update
+
+#####
+terraform init \
+  && terraform plan \
+  && terraform apply --auto-approve
+
+# this part is long and annoying but seems to be needed (https://github.com/kubernetes/kops/issues/2990)
+kops rolling-update cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME --cloudonly --force --yes
+
+kops validate cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME
+
+#####
+# or all at once
+terraform init \
+  && terraform plan \
+  && terraform apply --auto-approve \
+  && kops rolling-update cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME --cloudonly --force --yes \
+  && kops validate cluster --name $CLUSTER_NAME --state s3://$BUCKET_NAME
+
+#####
+# Debugging "cluster not ready":
+# https://stackoverflow.com/questions/47107117/how-to-debug-when-kubernetes-nodes-are-in-not-ready-state
+kubectl describe nodes
+
+
+# 5)  get efs id, add to specs/aws-efs.yaml
+
+# 6) encrypt kubectl.yaml before pushing:
+gpg --symmetric --batch --yes --passphrase $KUBECONFIG_PASSPHRASE kubecfg.yaml
+
+
+
+##########
+##########
+
+# 8) Supporting K8s infrastructure
+
+# create EFS k8s infrastructure:
+# get file-system ID from AWS, set in kubernetes/cluster/us-east-1/specs/aws-efs.yaml (two places)
+# create aws-efs-provisioner:
+kubectl apply -f kubernetes/$REGION/specs/aws-efs.yaml
+
+# create external-dns stuff:
+kubectl apply -f kubernetes/specs/external-dns.yaml
+
+# create Nginx Ingress controller:
+kubectl apply -f kubernetes/specs/nginx-ingress-controller.yaml
+# load balancer is region-specific:
+kubectl apply -f kubernetes/$REGION/specs/nginx-ingress-load-balancer.yaml
+
+# create kubernetes dashboard:
+kubectl apply -f kubernetes/specs/kubernetes-dashboard.yaml
+
+# To access kubernetes-dashboard:
+kubectl proxy
+# go to: http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/
+
+# I tried putting dashboard behind an ingress with basic auth, but it's pretty involved and there are some risks:
+# https://blog.heptio.com/on-securing-the-kubernetes-dashboard-16b09b1b7aca
+# so I just stuck with using kubectl proxy (it's not that bad)
+
+
+###
+## create monitoring infrastructure:
+## sometimes gotta run this twice because it creates new resources:
+#kubectl create -f kubernetes/kube-prometheus/manifests/
+#
+## auth secret
+#kubectl -n monitoring create secret generic basic-auth --from-file=kubernetes/auth
+#
+## create monitoring ingresses:
+#kubectl create -f kubernetes/cluster/us-east-1/specs/monitoring/
+
+
+
+##########
+# n) build a test stack:
+
+cd kubernetes/$REGION/cluster/ && export KUBECONFIG=$PWD/kubecfg.yaml && cd ../../..
+
+STACK_NAME=devtest
+IMAGE_TAG=build-k8s-cluster
+ENV_FILE=test-stack.yaml
+
+./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
+
+
