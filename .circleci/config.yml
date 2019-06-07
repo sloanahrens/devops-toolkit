@@ -155,6 +155,63 @@ jobs:
             docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
             docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
 
+  kubernetes_image_tests:
+    <<: *defaults
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 17.03.0-ce
+      - run:
+          name: Build Stack Tester Image
+          command: |
+            set -x
+            docker build -t stacktest -f docker/stacktest/Dockerfile .
+      - run:
+          name: Build and Test K8s Stack
+          command: |
+            set -x
+            cd kubernetes/us-east-2/cluster
+            gpg --decrypt --batch --yes --passphrase $KUBECONFIG_PASSPHRASE kubecfg.yaml.gpg > kubecfg.yaml
+            export KUBECONFIG=$PWD/kubecfg.yaml
+            cd ../../..
+            IMAGE_TAG=$(echo "$CIRCLE_BRANCH" | sed 's/[^a-zA-Z0-9]/-/g'| sed -e 's/\(.*\)/\L\1/')
+            STACK_NAME=ci-test-stockpicker-$CIRCLE_BUILD_NUM
+            ENV_FILE=test-stack.yaml
+            ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
+            sleep 10
+            ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
+            sleep 240 # hack for now
+            ./ci_scripts/test_k8s_app_stack.sh $STACK_NAME
+            ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
+
+  deploy_production_stack:
+    <<: *defaults
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 17.03.0-ce
+      - run:
+          name: Build Stack Tester Image
+          command: |
+            set -x
+            docker build -t stacktest -f docker/stacktest/Dockerfile .
+      - run:
+          name: Build and Test Production K8s Stack
+          command: |
+            set -x
+            cd kubernetes/us-east-2/cluster
+            gpg --decrypt --batch --yes --passphrase $KUBECONFIG_PASSPHRASE kubecfg.yaml.gpg > kubecfg.yaml
+            export KUBECONFIG=$PWD/kubecfg.yaml
+            cd ../../..
+            IMAGE_TAG=master
+            STACK_NAME=stockpicker
+            ENV_FILE=test-stack.yaml
+            ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
+            sleep 10
+            ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
+            sleep 240 # hack for now
+            ./ci_scripts/test_k8s_app_stack.sh $STACK_NAME
+
 workflows:
   version: 2
   build-and-deploy:
@@ -164,3 +221,14 @@ workflows:
       - image_build_test_push:
           requires:
             - python_linting
+      - kubernetes_image_tests:
+          requires:
+            - update_kubernetes_cluster
+            - image_build_test_push
+      - deploy_production_stack:
+          requires:
+            - kubernetes_image_tests
+          filters:
+            branches:
+              only:
+                - master

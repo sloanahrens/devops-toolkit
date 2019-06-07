@@ -6,6 +6,7 @@ metadata:
   labels:
     stack: STACK_NAME
 spec:
+  clusterIP: None
   ports:
   - port: 15672
   selector:

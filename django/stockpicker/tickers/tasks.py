@@ -30,3 +30,23 @@ def update_ticker(ticker_symbol):
     cache.delete(ticker_symbol)
 
     return ticker_symbol
+
+
+@app.task()
+def chained_ticker_updates(ticker_id=0):
+
+    if Ticker.objects.filter(id=ticker_id).exists():
+        ticker = Ticker.objects.get(id=ticker_id)
+        if not cache.add(ticker.symbol, 'true', 5 * 60):
+            print('{0} has already been accepted by another task.'.format(ticker.symbol))
+            return
+        update_ticker_data(ticker.symbol)
+        cache.delete(ticker.symbol)
+
+    next_ticker_id = ticker_id + 1
+    for tid in list(Ticker.objects.order_by('id').values_list('id', flat=True)):
+        if tid >= next_ticker_id and Ticker.objects.filter(id=tid).exists():
+            next_ticker_id = tid
+            break
+
+    chained_ticker_updates.delay(next_ticker_id)
