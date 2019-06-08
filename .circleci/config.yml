@@ -179,7 +179,7 @@ jobs:
             ENV_FILE=test-stack.yaml
             ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
             sleep 10
-            ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
+            ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 2
             sleep 240 # hack for now
             ./ci_scripts/test_k8s_app_stack.sh $STACK_NAME
             ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
@@ -208,7 +208,7 @@ jobs:
             ENV_FILE=test-stack.yaml
             ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
             sleep 10
-            ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
+            ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 2
             sleep 240 # hack for now
             ./ci_scripts/test_k8s_app_stack.sh $STACK_NAME
 

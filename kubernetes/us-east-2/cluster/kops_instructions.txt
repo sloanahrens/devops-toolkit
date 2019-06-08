@@ -176,5 +176,5 @@ IMAGE_TAG=build-k8s-cluster
 ENV_FILE=test-stack.yaml
 
 ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
-
-
+./ci_scripts/test_k8s_app_stack.sh $STACK_NAME
+./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME

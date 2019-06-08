@@ -29,6 +29,11 @@ echo "------------------"
 python manage.py load_tickers
 
 echo "------------------"
+echo "Start Quotes Update Task..."
+echo "------------------"
+echo "from tickers.tasks import chained_ticker_updates; chained_ticker_updates.delay()" | python manage.py shell
+
+echo "------------------"
 echo "Start uWSGI..."
 echo "------------------"
 uwsgi --module stockpicker.wsgi:application --http 0.0.0.0:8001 --static-map /static=/srv/_static

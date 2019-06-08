@@ -121,13 +121,6 @@ STATIC_ROOT = '_static'
 #####
 # Database
 # # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-#
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     }
-# }
 
 DATABASES = {
     'default': {
@@ -176,15 +169,12 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 CELERY_ACKS_LATE = True
 CELERYD_MAX_TASKS_PER_CHILD = 1
 
-# CELERY_TIMEZONE = 'America/Chicago'
+CELERY_TIMEZONE = 'America/Chicago'
 
 CELERY_BEAT_SCHEDULE = {
     'quotes-hourly-update': {
         'task': 'tickers.tasks.chained_ticker_updates',
-        # # for production:
-        # 'schedule': crontab(hour="*/3", minute=0, day_of_week='mon,tue,wed,thu,fri'),
-        # for local development testing:
-        'schedule': crontab(hour="*", minute="*/5", day_of_week='*'),
+        'schedule': crontab(hour="*/3", minute=0, day_of_week='mon,tue,wed,thu,fri'),
     }
 }
 

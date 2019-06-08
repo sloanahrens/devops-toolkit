@@ -43,10 +43,7 @@ def chained_ticker_updates(ticker_id=0):
         update_ticker_data(ticker.symbol)
         cache.delete(ticker.symbol)
 
-    next_ticker_id = ticker_id + 1
     for tid in list(Ticker.objects.order_by('id').values_list('id', flat=True)):
-        if tid >= next_ticker_id and Ticker.objects.filter(id=tid).exists():
-            next_ticker_id = tid
+        if tid > ticker_id and Ticker.objects.filter(id=tid).exists():
+            chained_ticker_updates.delay(tid)
             break
-
-    chained_ticker_updates.delay(next_ticker_id)
