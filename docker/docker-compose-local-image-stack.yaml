@@ -35,9 +35,23 @@ services:
     env_file:
      - ../container_environments/test-stack.yaml
 
-  worker:
+  worker1:
     image: celeryworker
-    container_name: stockpicker_worker
+    container_name: stockpicker_worker1
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  worker2:
+    image: celeryworker
+    container_name: stockpicker_worker2
     links:
       - postgres
       - rabbitmq
