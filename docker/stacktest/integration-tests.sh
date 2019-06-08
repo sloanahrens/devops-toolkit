@@ -3,7 +3,7 @@
 
 function wait_for_and_test_endpoint {
     period=10
-    limit=18
+    limit=24
     looper=${limit}
     # wait for the app to be all hooked up and working
     url="$1"
@@ -19,7 +19,7 @@ function wait_for_and_test_endpoint {
         looper=$(($looper-1))
         echo "URL: \"$url\" Response: \"$res\" | Sleeping $period seconds [$(($limit-$looper))/$limit]"
         sleep ${period}
-        res=$(curl -XGET -s ${url} -H 'Content-Type: application/json')
+        res=$(curl -XGET -s ${url} -H 'Content-Type: application/json' -H 'Cache-Control: no-cache')
         status=$(echo ${res} | jq '.status' || echo 'nada')
     done
     echo "url: $url; res: $res; status: $status"
