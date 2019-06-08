@@ -182,9 +182,9 @@ CELERY_BEAT_SCHEDULE = {
     'quotes-hourly-update': {
         'task': 'tickers.tasks.chained_ticker_updates',
         # # for production:
-        # 'schedule': crontab(hour="*/3", minute=0, day_of_week='mon,tue,wed,thu,fri'),
+        'schedule': crontab(hour="*/3", minute=0, day_of_week='mon,tue,wed,thu,fri'),
         # for local development testing:
-        'schedule': crontab(hour="*", minute="*/5", day_of_week='*'),
+        # 'schedule': crontab(hour="*", minute="*", day_of_week='*'),
     }
 }
 
