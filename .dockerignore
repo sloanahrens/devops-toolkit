@@ -3,3 +3,4 @@ ci_scripts
 django/venv
 kubernetes
 kube-prometheus
+vagrant
