@@ -1,9 +1,7 @@
 import json
 import random
 
-
 from django.utils.timezone import datetime
-
 from django.test import TestCase
 from django.urls import reverse
 from django.conf import settings

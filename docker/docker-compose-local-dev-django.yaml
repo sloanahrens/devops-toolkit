@@ -1,0 +1,31 @@
+version: '3.4'
+
+services:
+
+  django:
+    container_name: local_django_dev
+    build:
+      context: ../
+      dockerfile: ./docker/baseimage/Dockerfile
+    env_file:
+     - ../container_environments/test-stack.yaml
+    working_dir: /src
+    volumes:
+      - ../:/src
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+    command: bash -c "./docker/scripts/initialize-webapp-dev.sh"
+
+  postgres:
+    image: postgres:9.4
+    container_name: local_dev_postgres
+    env_file:
+     - ../container_environments/test-stack.yaml
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    external: false

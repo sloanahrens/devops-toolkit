@@ -37,18 +37,7 @@ The app has a number of other dependencies as well, and I will point them out ve
 There are also plenty of DevOps dependencies we will need. 
 The very first one is Vagrant.
 
-#### Vagrant and VirtualBox
-
-We will use a development environment I have set up for this project. To follow along, you will need to install [Vagrant](https://www.vagrantup.com/). 
-Vagrant makes it easy to spin up a local virtual machine.
-Vagrant requires a provider, and for most situations [VirtualBox](https://www.virtualbox.org/) is the best.
-
-Both Vagrant and VirtualBox will need to be installed to use the development environment. Installation varies by OS; here are some [instructions for Mac OSX](https://www.slashroot.in/how-install-vagrant-mac-os-x-step-step-procedure) (it's a bit dated but should still work).
-
-While installing Vagrant and VirtualBox is perhaps a slight annoyance, it's far simpler than installing all the various _other_ dependencies we will need. Using the development environment will mean everyone is "on the same page": literally on the same OS (Ubuntu) with the same versions of dependencies installed, and so on. 
-Always trim the entropy tree whenever you can.
-
-#### Set up `git`, clone repo, start Vagrant VM
+#### Set up `git`, clone repo
 
 If you do not already have `git` installed on your system, you will need to install it. 
 We're going to use the Vagrant VM as our development environment, with code in a "shared folder", which is a directory shared by the host and the guest VM. This accomplishes a couple of things. 
@@ -70,62 +59,233 @@ or
 git clone https://github.com/sloanahrens/devops-toolkit.git  # HTTP auth
 ```
 
-Now that you have a local copy of the repository, we want to start up the Vagrant dev-environment with:
+#### Install Docker
+
+If you are not familiar with [Docker](https://www.docker.com/) yet, do not fear. 
+We are going to using it enough that I think you will begin to get a feel for what it really is.
+
+If you do not have Docker installed on your system, vist the [download page]() and choose the appropriate installer.
+
+You can check that Docker is working by running:
 
 ```bash
-cd devops-toolkit/vagrant
-vagrant up
+docker ps
 ```
 
-The Vagrant box will take some time to finish provisioning. Once it's done, you can open a terminal session into the box with:
+It probably won't show you anything, because we haven't started any processes yet, but you should see this at least:
+
+```
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+```
+
+#### Install Docker-Compose
+
+We will use [Docker-Compose](https://docs.docker.com/compose/) for local development.
+Doing development work this way meshes well with the systems we will be building.
+It will also minimize the dependencies that have to be installed on your local system in order to use the `devops-toolkit` repository.
+
+You can find a Docker-Compose installer for your system [here](https://docs.docker.com/compose/install/). 
+You can verify the installation worked by running:
+
+```
+docker-compose --help
+```
+
+#### Create development environment
+
+We're going to re-create part of the `devops-toolkit` code-base in this exercise.
+To bootstrap the development environment we are going to use, we'll need to create a few files.
+
+From inside the `devops-toolkit` directory where you cloned the repository, created a new folder called `source` with the following structure:
+
+```
+source/
+    container_environments/
+    docker/
+        scripts/
+        baseimage/
+    django/
+```
+
+Now create the following six files:
+
+`source/docker/scripts/wait-for-it.sh` with the contents from [https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh](https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh).
+
+`source/docker/scripts/initialize-webapp-dev.sh`:
 
 ```bash
-vagrant ssh
+#!/bin/bash
+set -e
+
+echo "------------------"
+
+echo "Waiting for postgres..."
+wait-for-it.sh -t 60 $POSTGRES_HOST:$POSTGRES_PORT
+
+echo "Run Infinite Loop..."
+while true; do
+    sleep 60
+    echo "tick"
+done
 ```
 
-You should see this prompt:
+`source/docker/baseimage/Dockerfile`:
+
+```dockerfile
+FROM python:3.6-stretch
+
+ENV PYTHONUNBUFFERED 1
+
+WORKDIR /src
+
+RUN apt-get update && apt-get install -y postgresql
+
+COPY ./docker/scripts/wait-for-it.sh /usr/bin/wait-for-it.sh
+RUN chmod 755 /usr/bin/wait-for-it.sh
+
+COPY ./django/requirements.txt /src/requirements.txt
+
+RUN pip --no-cache-dir install --progress-bar pretty -r requirements.txt
+```
+
+`source/docker/docker-compose-local-dev-django.yaml`:
+
+```yaml
+version: '3.4'
+
+services:
+
+  django:
+    container_name: local_dev_django
+    image: baseimage
+    env_file:
+     - ../container_environments/test-stack.yaml
+    working_dir: /src
+    volumes:
+      - ../:/src
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+    command: bash -c "./docker/scripts/initialize-webapp-dev.sh"
+
+  postgres:
+    image: postgres:9.4
+    container_name: local_dev_postgres
+    env_file:
+     - ../container_environments/test-stack.yaml
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    external: false
+
+```
+
+`source/container_environments/test-stack.yaml`:
+
+```yaml
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_USER=test_user
+POSTGRES_PASSWORD=domicile-comanche-audible-bighorn
+POSTGRES_DB=db
+RABBITMQ_HOST=rabbitmq
+RABBITMQ_PORT=5672
+RABBITMQ_DEFAULT_USER=test_user
+RABBITMQ_DEFAULT_PASS=rabbit_password
+RABBITMQ_DEFAULT_VHOST=test_vhost
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_NAMESPACE=0
+SUPERUSER_PASSWORD=column-hand-pith-baby
+SUPERUSER_EMAIL=admin@nowhere.com
+APP_DEBUG=True
+```
+
+`source/django/requirements.txt`: just an empty text file.
+
+These files all mirror files in the `devops-toolkit` repo, so you can just copy them directly in some way if you like.
+
+With these six files in place, from the `source` directory, you should be able to fire up the development environment with
 
 ```bash
-ubuntu@ubuntu-xenial:~$
+docker build -f docker/baseimage/Dockerfile .
+docker-compose -f docker/docker-compose-local-dev-django.yaml up
 ```
 
-Type `ls` and you'll see the contents of the home directory, including `devops-toolkit/`.
+This will run the docker containers in attached mode, so you can see the log output.
+You can stop the containers by hitting `ctl-c`, and remove them by running:
 
-
-#### Create `virtualenv`
-
-Python comes in a lot of different [versions](https://www.python.org/doc/versions/), which can create problems of compatibility, especially when combined with a large set of python library dependencies used by an application. And I quote: 
-> [`virtualenv`](https://virtualenv.pypa.io/en/stable/) is a tool to create isolated Python environments.
-
-It's generally a good idea to use `virtualenv`s for local python development (unless you are using [Docker](https://stackoverflow.com/questions/48561981/activate-python-virtualenv-in-dockerfile)), and we will set one up inside our virtual machine. 
-While it's arguable that it's a bit redundant, I think the benefits of having it for local development outweigh the benefit of not using it.
-
-From the command prompt inside the Vagrant Ubuntu virtual machine, create a Python 3.6 `virtualenv` with:
 ```bash
-python3.6 -m venv venv
+docker-compose -f docker/docker-compose-local-dev-django.yaml down
 ```
 
-Now if you `ls` you will see that a directory `venv` has been created, containing our new virtualenv. We can can activate it with:
+If you see this in your output:
+
+```
+local_dev_django | bash: ./docker/scripts/initialize-webapp-dev.sh: Permission denied
+```
+
+then you will need to give the file the right permissions, with:
+
 ```bash
-source venv/bin/activate
-```
-Now your prompt should look like this:
-```
-(venv) ubuntu@ubuntu-xenial:~$
+chmod 744 docker/scripts/initialize-webapp-dev.sh
 ```
 
-Check the version of Python running in your virtualenv with:
+If all is well, you will see this at the bottom of the output:
 
 ```
-(venv) ubuntu@ubuntu-xenial:~$ python --version
-Python 3.6.8
+local_dev_django | Run Infinite Loop...
 ```
-
-(Notice that you don't have to use `python3.6`, because we are running in a virtualenv.)
-
 
 #### Create a Django project
 
+So we are going to be writing code on the host OS (which means you can use most any text editor you want), but executing the code from within a Docker container.
+
+Thanks the the infinite loop in the initialize script, our container will continue to run until we stop it. 
+We are going to "SSH" into the running docker container.
+Open a new terminal tab (leaving our docker-compose command running in the first one), and type:
+
+```bash
+docker ps
+```
+
+and you should see (your container ids will be different):
+
+```
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+9b2aa7689a3c        baseimage           "bash -c ./docker/..."   19 seconds ago      Up 18 seconds       0.0.0.0:8000->8000/tcp   local_dev_django
+e76441c68a89        postgres:9.4        "docker-entrypoint..."   20 seconds ago      Up 19 seconds       5432/tcp                 local_dev_postgres
+```
+
+We can open a terminal session into the running `baseimage` container with:
+
+```bash
+docker exec -it local_dev_django /bin/bash
+```
+
+Now we are running inside the container, and you should see a prompt similar to:
+
+```
+root@1c80236a5992:/src#
+```
+
+Running `ls` will show the directories we just created earlier:
+
+```
+root@1c80236a5992:/src# ls
+container_environments	django	docker
+```
+
+We want to be working in the `django` directory, so:
+
+```bash
+cd django
+```
+
+Now we are finally going to start building a Django application.
 First we need to install the Django libary with [`pip`](https://www.w3schools.com/python/python_pip.asp):
 
 ```bash
@@ -133,6 +293,13 @@ pip install Django==2.2.2
 ```
 
 (We could use `pip install django` and it would work, but I want to match the version currently used in the current code repository, so I'm giving `pip` that specific version.)
+
+The purpose of `requirements.txt` is to record our specific python dependencies. 
+So along the way, as we add new ones, we will export them to the file with:
+
+```bash
+pip freeze > /src/django/requirements.txt
+```
 
 Now that Django is installed, we can create a [new Django project](https://docs.djangoproject.com/en/2.2/intro/tutorial01/#creating-a-project).
 From the root directory of the VM (at the same level as `devops-toolkit/`), run:
@@ -156,6 +323,7 @@ stockpicker/
 Our django project needs an app, called `tickers`, and we can [create it with](https://docs.djangoproject.com/en/2.2/intro/tutorial01/#creating-the-polls-app):
 
 ```bash
+cd stockpicker
 python manage.py startapp tickers
 ```
 
@@ -171,6 +339,30 @@ tickers/
     models.py
     tests.py
     views.py
+```
+
+You'll have to add the line `'tickers',` to `INSTALLED_APPS` in `stockpicker/stockpicker/settings.py` so the project will find it.
+
+We need to add our database settings in `stockpicker/stockpicker/settings.py`:
+
+```python
+import os
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.getenv('POSTGRES_DB', 'local_db'),
+        'USER': os.getenv('POSTGRES_USER', 'local_user'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres-password'),
+        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRES_PORT', 5432),
+    }
+}
+```
+
+To use PostgreSQL we will also need the `psycopg2` `pip` package, so run:
+
+```bash
+pip install psycopg2==2.8.2
 ```
 
 #### Build and test models
@@ -245,8 +437,19 @@ The `Quote` object also has a `serialize` method that is used to easily convert 
 Now we need to create our first [Django database migration](https://docs.djangoproject.com/en/2.2/topics/migrations/) with:
 
 ```bash
-cd stockpicker
 python manage.py makemigrations 
+```
+
+If you see `No changes detected` then you forgot to add `'tickers',` to `INSTALLED_APPS` above.
+
+You should see:
+
+```
+root@d1fdee37d94d:/src/django/stockpicker# python manage.py makemigrations
+Migrations for 'tickers':
+  tickers/migrations/0001_initial.py
+    - Create model Ticker
+    - Create model Quote
 ```
 
 This will create a file in `stockpicker/tickers/migrations` that will define the database tables we need.
@@ -256,11 +459,88 @@ We can create a local database using the default database provider [SQLite](http
 python manage.py migrate
 ```
 
+You should see:
+
+```
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, sessions, tickers
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying sessions.0001_initial... OK
+  Applying tickers.0001_initial... OK
+root@d1fdee37d94d:/src/stockpicker#
+```
+
 Now that we have some models, we can test them with some unit tests.
 Add the following code to `stockpicker/tickers/tests.py`:
 
 ```python
+import json
 
+from django.utils.timezone import datetime
+from django.test import TestCase
+from django.conf import settings
+
+from tickers.models import Ticker, Quote
+
+
+def fake_quote_serialize(quote):
+    return {
+        'symbol': quote.ticker.symbol,
+        'date': quote.date.strftime('%Y-%m-%d'),
+        'ac': round(float(quote.adj_close), settings.DECIMAL_DIGITS),
+        'iac': round(float(quote.index_adj_close), settings.DECIMAL_DIGITS),
+        'sac': round(float(quote.scaled_adj_close), settings.DECIMAL_DIGITS),
+        'sac_ma': round(float(quote.sac_moving_average), settings.DECIMAL_DIGITS),
+        'ratio': round(float(quote.sac_to_sacma_ratio), settings.DECIMAL_DIGITS)
+    }
+
+
+class TickerModelTests(TestCase):
+
+    def setUp(self):
+        Ticker.objects.create(symbol='TEST')
+
+    def test_ticker_exists(self):
+        self.assertTrue(Ticker.objects.get(symbol='TEST').id > 0)
+
+
+class QuoteModelTests(TestCase):
+
+    def setUp(self):
+        Quote.objects.create(ticker=Ticker.objects.create(symbol='TEST'), date=datetime.today())
+
+    def test_quote_exists(self):
+        ticker = Ticker.objects.get(symbol='TEST')
+        self.assertTrue(Quote.objects.get(ticker=ticker, date=datetime.today()).id > 0)
+
+    def test_quote_serializes(self):
+        ticker = Ticker.objects.get(symbol='TEST')
+        quote = Quote.objects.get(ticker=ticker, date=datetime.today())
+        self.assertEqual(
+            json.dumps(quote.serialize()),
+            json.dumps(fake_quote_serialize(quote)))
+```
+
+We also need to add this setting to `stockpicker/stockpicker/settings.py`:
+
+```python
+DECIMAL_DIGITS = 4
 ```
 
 Now that we have some unit tests, we can run them with:
@@ -272,10 +552,279 @@ python manage.py test
 You should see the following output:
 
 ```
+root@d1fdee37d94d:/src/django/stockpicker# python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.010s
+
+OK
+Destroying test database for alias 'default'...
+```
+
+We have models and unit tests! Now we need some data.
+
+
+#### Stock quote utility function
+
+We're going to build code to populate our database. 
+The first thing we will need is a utility function to gather the stock price data.
+Don't get too caught up in the math that this code is doing; it will make more sense once you see the graphs of the data.
+Create `stockpicker/tickers/utility.py` with the following contents:
+
+```python
+from django.utils.timezone import datetime, timedelta
+
+from django.conf import settings
+
+from pandas_datareader import data as web
+from pandas_datareader._utils import RemoteDataError
+
+from tickers.models import Ticker, Quote
+
+
+def update_ticker_data(symbol, force=False):
+
+    def update_quotes(ticker_symbol, force_update=False):
+
+        ticker, _ = Ticker.objects.get_or_create(symbol=ticker_symbol)
+
+        last_business_day = datetime.today().date()
+        # weekday() gives 0 for Monday through 6 for Sunday
+        while last_business_day.weekday() > 4:
+            last_business_day = last_business_day + timedelta(days=-1)
+
+        # don't waste work
+        if force_update or ticker.latest_quote_date() is None or ticker.latest_quote_date() < last_business_day:
+
+            print('latest_quote_date: {0}, last_business_day: {1}'.format(ticker.latest_quote_date(),
+                                                                          last_business_day))
+
+            print('Updating: {0}'.format(ticker_symbol))
+
+            today = datetime.now()
+            start = today + timedelta(weeks=-settings.WEEKS_TO_DOWNLOAD)
+
+            new_quotes = dict()
+            yahoo_data = web.get_data_yahoo(ticker_symbol, start, today)
+            try:
+                for row in yahoo_data.iterrows():
+                    quote_date = row[0].strftime('%Y-%m-%d')
+                    quote_data = row[1].to_dict()
+                    new_quotes[quote_date] = quote_data
+            except RemoteDataError:
+                print('Error getting finance data for {0}'.format(ticker_symbol))
+                return
+
+            # base data from finance API:
+            for quote_date, quote_data in new_quotes.items():
+                try:
+                    quote, _ = Quote.objects.get_or_create(ticker=ticker, date=quote_date)
+                except Quote.MultipleObjectsReturned:
+                    quote = Quote.objects.filter(ticker=ticker, date=quote_date).first()
+                quote.high = quote_data['High']
+                quote.low = quote_data['Low']
+                quote.open = quote_data['Open']
+                quote.close = quote_data['Close']
+                quote.volume = quote_data['Volume']
+                quote.adj_close = quote_data['Adj Close']
+                quote.save()
+
+            index_quotes_dict = {q.date: q for q in Ticker.objects.get(symbol=settings.INDEX_TICKER).quote_set.order_by('date')}
+
+            ticker_quotes_list = [q for q in ticker.quote_set.order_by('date')]
+
+            # set scaled_adj_close on all quotes first
+            for quote in ticker_quotes_list:
+                quote.index_adj_close = index_quotes_dict[quote.date].adj_close
+                quote.scaled_adj_close = quote.adj_close / quote.index_adj_close
+
+            # calculate moving average for each day
+            for quote in ticker_quotes_list:
+                moving_average_start = quote.date + timedelta(weeks=-settings.MOVING_AVERAGE_WEEKS)
+                moving_average_quote_set = [q for q in ticker_quotes_list if moving_average_start <= q.date <= quote.date]
+                moving_average_quote_values = [v.scaled_adj_close for v in moving_average_quote_set]
+                quote.quotes_in_moving_average = len(moving_average_quote_values)
+                quote.sac_moving_average = sum(moving_average_quote_values) / quote.quotes_in_moving_average
+                quote.sac_to_sacma_ratio = quote.scaled_adj_close / quote.sac_moving_average
+
+            # save changes
+            for quote in ticker_quotes_list:
+                quote.save()
+
+            print('Found %s quotes for %s from %s to %s' % (len(new_quotes), ticker_symbol,
+                                                            start.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')))
+
+    # first update the index data, since we need it for calculations
+    update_quotes(ticker_symbol=settings.INDEX_TICKER)
+
+    update_quotes(ticker_symbol=symbol, force_update=force)
 
 ```
 
-well shit. vagrant screwed me so gotta redo a bunch of this.
+In order for this code to work, we will need to install some more python dependencies, with:
 
-gonna do this instead: 
-https://www.calazan.com/using-docker-and-docker-compose-for-local-django-development-replacing-virtualenv/
+```bash
+pip install fix-yahoo-finance==0.1.33
+pip install pandas-datareader==0.7.0
+```
+
+And `pip freeze` again:
+
+
+```bash
+pip freeze > /src/django/requirements.txt
+```
+
+#### Load data with Django management commands
+
+Now we're going to create two new [Django management commands](https://docs.djangoproject.com/en/2.2/howto/custom-management-commands/).
+
+Create new directories and empty files in `stockpicker/tickers` such that your layout looks like:
+
+```
+tickers/
+    __init__.py
+    management/
+        __init__.py
+        commands/
+            __init__.py
+            load_tickers.py
+            update_ticker_quotes.py
+    tests.py
+    views.py
+    ...
+```
+
+The contents of `load_tickers.py` should be:
+
+```python
+from django.core.management import BaseCommand
+from django.conf import settings
+
+from tickers.models import Ticker
+
+
+class Command(BaseCommand):
+
+    def handle(self, *args, **options):
+        _, created = Ticker.objects.get_or_create(symbol=settings.INDEX_TICKER)
+        print('{0} {1}'.format(settings.INDEX_TICKER, 'created' if created else 'exists'))
+        for symbol in settings.DEFAULT_TICKERS:
+            _, created = Ticker.objects.get_or_create(symbol=symbol)
+            print('{0} {1}'.format(symbol, 'created' if created else 'exists'))
+
+```
+
+The contents of `update_ticker_quotes.py` should be:
+
+```python
+from django.core.management import BaseCommand
+from django.conf import settings
+
+from tickers.models import Ticker
+from tickers.utility import update_ticker_data
+
+
+class Command(BaseCommand):
+
+    def handle(self, *args, **options):
+        update_ticker_data(settings.INDEX_TICKER)
+        for ticker in Ticker.objects.all():
+            update_ticker_data(ticker.symbol)
+
+```
+
+This gives us new commands that we can use with `manage.py`.
+
+We also need some default tickers, and a few other settings.
+Add the following settings to `stockpicker/stockpicker/settings.py`:
+
+```python
+DECIMAL_DIGITS = 4
+MOVING_AVERAGE_WEEKS = 86
+WEEKS_TO_DOWNLOAD = 260
+
+INDEX_TICKER = 'SPY'
+
+DEFAULT_TICKERS = [
+    'GOOG',
+    'AMZN',
+    'FB',
+    'EBAY',
+    'TWTR',
+    'IBM',
+    'AAPL',
+    'MSFT',
+    'TSLA',
+]
+```
+
+Now let's load our tickers with:
+
+```bash
+python manage.py load_tickers
+```
+
+You should see:
+
+```
+root@d1fdee37d94d:/src/django/stockpicker# python manage.py load_tickers
+SPY created
+GOOG created
+AMZN created
+FB created
+EBAY created
+TWTR created
+IBM created
+AAPL created
+MSFT created
+TSLA created
+```
+
+And we can load our stock quotes data (this will take a couple minutes):
+
+```bash
+python manage.py update_ticker_quotes
+```
+
+This will take a few minutes to run. You should see this once it's done:
+
+```
+root@7f6fa6d500af:/src/django/stockpicker# python manage.py update_ticker_quotes
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: SPY
+Found 1255 quotes for SPY from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: GOOG
+Found 1255 quotes for GOOG from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: AMZN
+Found 1255 quotes for AMZN from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: FB
+Found 1255 quotes for FB from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: EBAY
+Found 1255 quotes for EBAY from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: TWTR
+Found 1255 quotes for TWTR from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: IBM
+Found 1255 quotes for IBM from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: AAPL
+Found 1255 quotes for AAPL from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: MSFT
+Found 1255 quotes for MSFT from 2014-06-20 to 2019-06-14
+latest_quote_date: None, last_business_day: 2019-06-14
+Updating: TSLA
+Found 1255 quotes for TSLA from 2014-06-20 to 2019-06-14
+```
+
+Now we have data! Next we need some views.
+
+#### Building API views, with tests

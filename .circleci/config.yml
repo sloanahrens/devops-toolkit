@@ -131,7 +131,7 @@ jobs:
             docker-compose -f docker/docker-compose-unit-test.yaml run unit-test
             docker-compose -f docker/docker-compose-unit-test.yaml down
       - run:
-          name: Run Integration Test Script Against Docker-Compose Stack
+          name: Run Integration Tests Against Local Docker-Compose Stack
           command: |
             set -x
             docker-compose -f docker/docker-compose-local-image-stack.yaml up -d
@@ -155,7 +155,31 @@ jobs:
             docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
             docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
 
-  kubernetes_image_tests:
+  tagged_image_test:
+    <<: *defaults
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 17.03.0-ce
+      - run:
+          name: Build Stack Tester Image
+          command: |
+            set -x
+            docker build -t stacktest -f docker/stacktest/Dockerfile .
+      - run:
+          name: Run Integration Tests With Pushed Images
+          command: |
+            set -x
+            $(aws ecr get-login --no-include-email --region us-east-2)
+            export IMAGE_TAG=$(echo "$CIRCLE_BRANCH" | sed 's/[^a-zA-Z0-9]/-/g'| sed -e 's/\(.*\)/\L\1/')
+            docker-compose -f docker/docker-compose-tagged-image-stack.yaml up -d
+            docker run -e SERVICE="localhost:8001" --network container:stockpicker_webapp stacktest ./integration-tests.sh \
+                || \
+                (echo "*** WORKER LOGS:" && echo "$(docker logs stockpicker_worker)" && \
+                echo "*** WEBAPP LOGS:" && echo "$(docker logs stockpicker_webapp)" && exit 1)
+            docker-compose -f docker/docker-compose-tagged-image-stack.yaml down
+
+  kubernetes_image_test:
     <<: *defaults
     steps:
       - checkout
@@ -184,7 +208,7 @@ jobs:
             ./ci_scripts/test_k8s_app_stack.sh $STACK_NAME
             ./ci_scripts/delete_k8s_app_stack.sh $STACK_NAME
 
-  deploy_production_stack:
+  prod_stack_deployment:
     <<: *defaults
     steps:
       - checkout
@@ -221,13 +245,16 @@ workflows:
       - image_build_test_push:
           requires:
             - python_linting
-      - kubernetes_image_tests:
+      - tagged_image_test:
+          requires:
+            - image_build_test_push
+      - kubernetes_image_test:
           requires:
             - update_kubernetes_cluster
-            - image_build_test_push
-      - deploy_production_stack:
+            - tagged_image_test
+      - prod_stack_deployment:
           requires:
-            - kubernetes_image_tests
+            - kubernetes_image_test
           filters:
             branches:
               only:

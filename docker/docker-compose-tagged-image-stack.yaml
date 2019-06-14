@@ -1,0 +1,78 @@
+version: '3.4'
+services:
+
+  redis:
+    image: redis
+    container_name: stockpicker_redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  rabbitmq:
+    image: rabbitmq:3.6
+    container_name: stockpicker_rabbitmq
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  postgres:
+    image: postgres:9.4
+    container_name: stockpicker_postgres
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  webapp:
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/webapp:$IMAGE_TAG
+    container_name: stockpicker_webapp
+    ports:
+     - 8080:8001
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  worker1:
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+    container_name: stockpicker_worker1
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  worker2:
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+    container_name: stockpicker_worker2
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  beat:
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
+    container_name: stockpicker_beat
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    env_file:
+     - ../container_environments/test-stack.yaml
