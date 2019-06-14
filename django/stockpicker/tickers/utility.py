@@ -19,8 +19,6 @@ def update_ticker_data(symbol, force=False):
         while last_business_day.weekday() > 4:
             last_business_day = last_business_day + timedelta(days=-1)
 
-        # if last_business_day > ticker.latest_quote_date():
-
         # don't waste work
         if force_update or ticker.latest_quote_date() is None or ticker.latest_quote_date() < last_business_day:
 
