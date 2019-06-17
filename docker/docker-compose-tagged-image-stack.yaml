@@ -36,7 +36,7 @@ services:
      - ../container_environments/test-stack.yaml
 
   worker1:
-    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celery:$IMAGE_TAG
     container_name: stockpicker_worker1
     links:
       - postgres
@@ -48,9 +48,10 @@ services:
       - redis
     env_file:
      - ../container_environments/test-stack.yaml
+    command: bash -c "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"
 
   worker2:
-    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celery:$IMAGE_TAG
     container_name: stockpicker_worker2
     links:
       - postgres
@@ -62,9 +63,10 @@ services:
       - redis
     env_file:
      - ../container_environments/test-stack.yaml
+    command: bash -c "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"
 
   beat:
-    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
+    image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celery:$IMAGE_TAG
     container_name: stockpicker_beat
     links:
       - postgres
@@ -76,3 +78,4 @@ services:
       - redis
     env_file:
      - ../container_environments/test-stack.yaml
+    command: bash -c "sleep 90 && celery beat --app=stockpicker.celery --loglevel=info"

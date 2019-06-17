@@ -100,25 +100,15 @@ jobs:
           paths:
             - /caches/baseimage.tar
       - run:
-          name: Build Code Image
-          command: |
-            set -x
-            docker build -t codeimage -f docker/codeimage/Dockerfile .
-      - run:
           name: Build Webapp Image
           command: |
             set -x
             docker build -t webapp -f docker/webapp/Dockerfile .
       - run:
-          name: Build Celery Worker Image
+          name: Build Celery Image
           command: |
             set -x
-            docker build -t celeryworker -f docker/celeryworker/Dockerfile .
-      - run:
-          name: Build Celery Beat Image
-          command: |
-            set -x
-            docker build -t celerybeat -f docker/celerybeat/Dockerfile .
+            docker build -t celery -f docker/celery/Dockerfile .
       - run:
           name: Build Stack Tester Image
           command: |
@@ -149,11 +139,9 @@ jobs:
             IMAGE_TAG=$(echo "$CIRCLE_BRANCH" | sed 's/[^a-zA-Z0-9]/-/g'| sed -e 's/\(.*\)/\L\1/')
             REPO_ID=421987441365
             docker tag webapp $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/webapp:$IMAGE_TAG
-            docker tag celerybeat $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
-            docker tag celeryworker $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+            docker tag celery $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celery:$IMAGE_TAG
             docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/webapp:$IMAGE_TAG
-            docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celerybeat:$IMAGE_TAG
-            docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:$IMAGE_TAG
+            docker push $REPO_ID.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celery:$IMAGE_TAG
 
   tagged_image_test:
     <<: *defaults
