@@ -47,14 +47,6 @@ class QuoteModelTests(TestCase):
             json.dumps(fake_quote_serialize(quote)))
 
 
-class PickerPageViewTests(TestCase):
-
-    def test_template_used(self):
-        response = self.client.get('')
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, template_name='tickers/picker.html')
-
-
 class TickersLoadedViewTests(TestCase):
 
     def test_no_tickers(self):

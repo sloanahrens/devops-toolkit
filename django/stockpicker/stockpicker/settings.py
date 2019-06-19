@@ -113,11 +113,6 @@ USE_TZ = True
 
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 STATIC_URL = '/static/'
-STATIC_ROOT = "/src/_static"
-
-
-# Allowed Hosts
-ALLOWED_HOSTS = ['*']
 
 
 #####
@@ -181,6 +176,13 @@ CELERY_BEAT_SCHEDULE = {
         # 'schedule': crontab(hour="*", minute="*", day_of_week='*'),
     }
 }
+
+
+STATIC_ROOT = "/src/_static"
+
+
+# Allowed Hosts
+ALLOWED_HOSTS = ['*']
 
 
 #####
