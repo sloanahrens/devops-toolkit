@@ -3,40 +3,37 @@ version: '3.4'
 services:
 
   django:
-    container_name: local_dev_django
     image: baseimage
-    build:
-      context: ../
-      dockerfile: ./docker/baseimage/Dockerfile
+    container_name: local_dev_django
     env_file:
      - ../container_environments/test-stack.yaml
-    working_dir: /src
     volumes:
       - ../:/src
+    working_dir: /src/django/stockpicker
     ports:
       - "8000:8000"
     links:
       - postgres
       - rabbitmq
       - redis
-    command: bash -c "./docker/scripts/initialize-webapp-dev.sh"
+    command: bash -c "wait-for-it.sh -t 60 postgres:5432 && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
 
   celery:
-    container_name: local_dev_celery
     image: baseimage
-    build:
-      context: ../
-      dockerfile: ./docker/baseimage/Dockerfile
+    container_name: local_dev_celery
     env_file:
      - ../container_environments/test-stack.yaml
-    working_dir: /src
+    environment:
+      C_FORCE_ROOT: "yes"
+    working_dir: /src/django/stockpicker
     volumes:
       - ../:/src
     links:
       - postgres
       - rabbitmq
       - redis
-    command: bash -c "./docker/scripts/start-celery-worker.sh"
+    command: bash -c "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"
 
   redis:
     image: redis

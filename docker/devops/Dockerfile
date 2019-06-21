@@ -15,7 +15,8 @@ RUN apt-get -y update && \
 
 RUN wget https://releases.hashicorp.com/terraform/${TERRAFORM_VER}/terraform_${TERRAFORM_VER}_linux_amd64.zip && \
     unzip terraform_${TERRAFORM_VER}_linux_amd64.zip && \
-    mv terraform /usr/local/bin/
+    mv terraform /usr/local/bin/ && \
+    rm terraform_${TERRAFORM_VER}_linux_amd64.zip
 
 RUN curl -L -o /tmp/docker-${DOCKER_VER}.tgz https://get.docker.com/builds/Linux/x86_64/docker-${DOCKER_VER}.tgz && \
     tar -xz -C /tmp -f /tmp/docker-${DOCKER_VER}.tgz && \
