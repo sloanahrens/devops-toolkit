@@ -219,8 +219,7 @@ services:
       - postgres
       - rabbitmq
       - redis
-    command: bash -c "wait-for-it.sh -t 60 postgres:5432 && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
-
+    command: bash -c "wait-for-it.sh -t 60 postgres:5432 && python manage.py migrate && python manage.py load_tickers && python manage.py runserver 0.0.0.0:8000"
 
   celery:
     image: baseimage
@@ -293,7 +292,7 @@ docker exec -it local_dev_django /bin/bash
 Then from inside the container run:
 
 ```bash
-python manage.py load_tickers && echo "from tickers.tasks import chained_ticker_updates; chained_ticker_updates.delay()" | python manage.py shell
+echo "from tickers.tasks import chained_ticker_updates; chained_ticker_updates.delay()" | python manage.py shell
 ```
 
 Now watch the output in the tab running the Docker-Compose stack (or look at logs with `docker logs`) and you should see output similar to what you saw in Part 1 when updating stock quote data.
@@ -305,7 +304,124 @@ You can wipe your volume and start over by exiting and removing the current stac
 docker volume rm docker_postgres_data
 ```
 
-Now re-start the development stack, `exec` into the `local_dev_django` container, and run the Python command again, and you should see data-building task output.
+Now re-start the development stack, `exec` into the `local_dev_django` container, and run the above Python commands again, and you should see data-building task output.
 
 ### Celery Beat
 
+To add a Celery [beat scheduler](http://docs.celeryproject.org/en/latest/userguide/periodic-tasks.html), create the following file:
+
+`docker/docker-compose-local-dev-django-celery-beat.yaml`:
+
+```yaml
+version: '3.4'
+
+services:
+
+  django:
+    image: baseimage
+    container_name: local_dev_django
+    env_file:
+     - ../container_environments/test-stack.yaml
+    volumes:
+      - ../:/src
+    working_dir: /src/django/stockpicker
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    command: bash -c "wait-for-it.sh -t 60 postgres:5432 && python manage.py migrate && python manage.py load_tickers && python manage.py runserver 0.0.0.0:8000"
+
+  celery:
+    image: baseimage
+    container_name: local_dev_celery_worker
+    env_file:
+     - ../container_environments/test-stack.yaml
+    environment:
+      C_FORCE_ROOT: "yes"
+    working_dir: /src/django/stockpicker
+    volumes:
+      - ../:/src
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    command: bash -c "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"
+
+  beat:
+    image: baseimage
+    container_name: local_dev_celery_beat
+    env_file:
+     - ../container_environments/test-stack.yaml
+    environment:
+      C_FORCE_ROOT: "yes"
+    working_dir: /src/django/stockpicker
+    volumes:
+      - ../:/src
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    command: bash -c "sleep 30 && celery beat --app=stockpicker.celery --loglevel=info"
+
+  redis:
+    image: redis
+    container_name: local_dev_redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  rabbitmq:
+    image: rabbitmq:3.6
+    container_name: local_dev_rabbitmq
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  postgres:
+    image: postgres:9.4
+    container_name: local_dev_postgres
+    env_file:
+     - ../container_environments/test-stack.yaml
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    external: false
+```
+
+This is the same as `docker-compose-local-dev-django-celery.yaml` with the addition of the Celery beat scheduler container.
+
+The default Celery schedule runs the stock quote data update task once every three hours on buisiness days.
+If you want to make it run more-or-less immediately, you can update `CELERY_BEAT_SCHEDULE` in `django/stockpicker/stockpicker/settings.py` to match:
+
+```python
+CELERY_BEAT_SCHEDULE = {
+    'quotes-hourly-update': {
+        'task': 'tickers.tasks.chained_ticker_updates',
+        'schedule': crontab(hour="*", minute="*", day_of_week='*'),
+    }
+}
+```
+
+Then recycle the dev environment with:
+
+```bash
+docker-compose -f docker/docker-compose-local-dev-django-celery-beat.yaml down
+docker-compose -f docker/docker-compose-local-dev-django-celery-beat.yaml up
+```
+
+If you see an error like this in the output:
+
+```
+local_dev_celery_beat | ERROR: Pidfile (celerybeat.pid) already exists.
+local_dev_celery_beat | Seems we're already running? (pid: 1)
+```
+
+Then kill the dev environment, and remove the `celerybeat.pid` file with:
+
+```bash
+rm django/stockpicker/celerybeat.pid
+```
+
+Now restart the environment again, and shortly you should see the data update task executing in the log output, and see working graphs at [http://localhost:8000](http://localhost.8000).

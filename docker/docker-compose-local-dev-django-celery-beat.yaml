@@ -20,7 +20,7 @@ services:
 
   celery:
     image: baseimage
-    container_name: local_dev_celery
+    container_name: local_dev_celery_worker
     env_file:
      - ../container_environments/test-stack.yaml
     environment:
@@ -33,6 +33,22 @@ services:
       - rabbitmq
       - redis
     command: bash -c "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"
+
+  beat:
+    image: baseimage
+    container_name: local_dev_celery_beat
+    env_file:
+     - ../container_environments/test-stack.yaml
+    environment:
+      C_FORCE_ROOT: "yes"
+    working_dir: /src/django/stockpicker
+    volumes:
+      - ../:/src
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    command: bash -c "sleep 30 && celery beat --app=stockpicker.celery --loglevel=info"
 
   redis:
     image: redis
