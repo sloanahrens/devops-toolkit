@@ -1,7 +1,13 @@
-# A Toy Stock-Picker Application, Part 2: Dockerize the App
+# Part 2: Dockerize the App
 
-In this tutorial we are going to run multiple microservices, including PostgreSQL.
-We made it through Part 1 using only Sqlite, but since we will be need to run multiple microservices in order to use Celery in [Part 3](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-3-microservices-celery.md), we may as well upgrade our database along the way.
+In this exercise we will take the Django application we built in Part 1, and "dockerize" it.
+We will build the configuration necessary to build a Docker image that can run our application for local development purposes.
+In later exercises we will build on this foundation to created production-ready application images via a continuous integration pipeline.
+
+### Install Docker-Compose
+
+If you don't have [Docker-Compose](https://docs.docker.com/compose/) installed on your host OS yet, you will need to install it now.
+You can find installers for the various systems [here](https://docs.docker.com/compose/install/).
 
 ### Complete Part 1
 
@@ -15,10 +21,11 @@ This tutorial should hopefully be [idempotent](https://en.wikipedia.org/wiki/Ide
 We're not going to use the [`devops` development environment](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/0-local-dev-env-devops.md) in this tutorial like we did in Part 1.
 Using the base Docker image for our application turns out to be a slightly better way, and hopefully less confusing in the end, since we will be using one of our deliverables as a development tool.
 
-### Install Docker-Compose
+### PostgreSQL
 
-If you don't have [Docker-Compose](https://docs.docker.com/compose/) installed on your host OS yet, you will need to install it now.
-You can find installers for the various systems [here](https://docs.docker.com/compose/install/).
+In this exercise we are going to run multiple microservices, including PostgreSQL.
+We made it through Part 1 using only Sqlite, but since we will be need to run multiple microservices in order to use Celery in [Part 3](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-3-microservices-celery.md), we may as well upgrade our database along the way.
+
 
 ### Add Postgres client to requirements file
 
@@ -224,3 +231,6 @@ Then re-run this to start it again:
 ```bash
 docker-compose -f docker/docker-compose-local-dev-django.yaml up
 ```
+
+[Prev: Part 1](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-1-microservices-django.md)
+[Next: Part 3](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-3-microservices-celery.md)

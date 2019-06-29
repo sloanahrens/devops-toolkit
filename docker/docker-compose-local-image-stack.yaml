@@ -78,4 +78,4 @@ services:
       - redis
     env_file:
      - ../container_environments/test-stack.yaml
-    command: bash -c "sleep 6 0 && celery beat --app=stockpicker.celery --loglevel=info"
+    command: bash -c "sleep 30 && celery beat --app=stockpicker.celery --loglevel=info"

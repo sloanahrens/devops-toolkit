@@ -108,13 +108,6 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-STATIC_URL = '/static/'
-
-
 #####
 # Database
 # # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
@@ -177,7 +170,10 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 
-
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/2.2/howto/static-files/
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+STATIC_URL = '/static/'
 STATIC_ROOT = "/src/_static"
 
 

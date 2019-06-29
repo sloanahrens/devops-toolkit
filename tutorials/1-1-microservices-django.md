@@ -1,6 +1,5 @@
-# A Toy Stock-Picker Application, Part 1: Django
+# Part 1: A Modest Django Web App 
 
-### Intro
 In order to do our DevOps work, we need a software application to build, test and deploy. 
 We will ultimately deploy our application as several microservices, but first we have to build it. 
 We could have approached the problem of building a modern DevOps system by using a pre-built application that we found somewhere on the Internet. 
@@ -36,16 +35,12 @@ The app has a number of other dependencies as well, and I will point them out ve
 
 There are also plenty of DevOps dependencies we will need along the way, but the development environment will take care of most of them.
 
-
 ### Set up the development environment
 
-The first thing you will need to do is set up your local development environment as described [here](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-0-local-development-environment.md).
+The first thing you will need to do is set up your local development environment as described [here](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/0-local-dev-env-devops.md).
 
 If you are not familiar with [Docker](https://www.docker.com/) yet, do not fear. 
 We are going to be using it enough that I think you will begin to get a feel for what it really is.
-
-
-### Use a new source directory
 
 Once you have Docker installed and the development environment working, start it with:
 
@@ -60,8 +55,15 @@ root@1c80236a5992:/src#
 ```
 
 Now exit the container (type `exit`) and we are going to modify the basic command a bit.
+
+### Use a new `source` directory
+
 The purpose of this tutorial is to re-build the Django/Celery web application.
 So instead of sharing the existing `devops-toolkit` directory, we're going to give the development environment a different path.
+
+You should use a directory called `source`, created in your local clone of the `devops-toolkit` repo.
+The [`.gitignore` file](https://git-scm.com/docs/gitignore) already knows to ignore this directory for the purposes of the parent repo.
+This directory structure is assumed throughout the rest of the tutorial.
 
 From inside the `devops-toolkit` directory, create a new directory called `source`, and a directory inside it called `django`:
 
@@ -683,6 +685,8 @@ Now edit the existing `stockpicker/stockpicker/urls.py` file as:
 ```python
 from django.contrib import admin
 from django.urls import path, include
+from django.conf.urls.static import static
+from django.conf import settings
 
 from tickers.views import PickerPageView
 
@@ -690,7 +694,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', PickerPageView.as_view(), name='picker_page'),
     path('tickers/', include('tickers.urls', namespace='tickers')),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 ```
 
@@ -975,10 +979,12 @@ Destroying test database for alias 'default'...
 
 ### `INSTALLED_APPS` Django setting
 
-We also need to set a Django setting for static files.
-Add the following to `stockpicker/stockpicker/settings.py`:
+We also need to set a few Django settings for static files.
+Add the following to the bottom of `stockpicker/stockpicker/settings.py`:
 
 ```python
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+STATIC_URL = '/static/'
 STATIC_ROOT = "/src/_static"
 ```
 
@@ -1203,3 +1209,6 @@ python manage.py runserver 0.0.0.0:8000
 Now you should be able to go to `localhost:8000` in your favorite browser from your host OS, and see the same thing that you see live at [stockpicker.sloanahrens.com](https://stockpicker.sloanahrens.com).
 
 You can stop the development server with `ctl-c`.
+
+[Prev: Part 0](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/0-local-dev-env-devops.md)
+[Next: Part 2](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-2-containerization-baseimage.md)

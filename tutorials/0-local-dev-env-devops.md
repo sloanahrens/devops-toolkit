@@ -1,4 +1,4 @@
-# Local Docker Development Environments
+# Part 0: Local DevOps Docker Development Environment
 
 There are two different development environments used in the tutorials, the `devops` environment and the `baseimage` environment.
 For both, you will need Docker and `git` installed in your host OS.
@@ -117,7 +117,18 @@ docker exec -it local_dev /bin/bash
 
 To exit the environment, just type `exit`.
 
+If you get an error message like:
 
-### `baseimage` development environment
+```
+docker: Error response from daemon: Conflict. The container name "/local_dev" is already in use by ...
+```
 
-See the tutorials [Part 2](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-2-containerization-baseimage.md) to set this up.
+remove the existing container with:
+
+```bash
+docker rm local_dev
+```
+
+and then run the `docker run` command again.
+
+[Next Part 1](https://github.com/sloanahrens/devops-toolkit/blob/master/tutorials/1-1-microservices-django.md)
