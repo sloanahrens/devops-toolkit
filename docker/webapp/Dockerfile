@@ -1,12 +1,13 @@
-FROM codeimage
+FROM baseimage
 
 EXPOSE 8001
 
 WORKDIR /src
 
-COPY ./docker/wait-for-it.sh /usr/bin/wait-for-it.sh
-RUN chmod 755 /usr/bin/wait-for-it.sh
+COPY ./django/stockpicker/stockpicker /src/stockpicker
+COPY ./django/stockpicker/tickers /src/tickers
+COPY ./django/stockpicker/manage.py /src/manage.py
 
-COPY ./docker/webapp/entrypoint.sh /src/entrypoint.sh
+COPY ./docker/scripts/initialize-webapp-prod.sh /src/entrypoint.sh
 RUN chmod 755 /src/entrypoint.sh
 ENTRYPOINT ["/src/entrypoint.sh"]

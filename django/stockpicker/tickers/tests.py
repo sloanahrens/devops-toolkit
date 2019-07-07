@@ -1,9 +1,7 @@
 import json
 import random
 
-
 from django.utils.timezone import datetime
-
 from django.test import TestCase
 from django.urls import reverse
 from django.conf import settings
@@ -49,18 +47,10 @@ class QuoteModelTests(TestCase):
             json.dumps(fake_quote_serialize(quote)))
 
 
-class PickerPageViewTests(TestCase):
-
-    def test_template_used(self):
-        response = self.client.get('')
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, template_name='tickers/picker.html')
-
-
 class TickersLoadedViewTests(TestCase):
 
     def test_no_tickers(self):
-        response = self.client.get(reverse('tickers:tickers_loaded'))
+        response = self.client.get(reverse('tickers_loaded'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.dumps(response.data),
@@ -68,7 +58,7 @@ class TickersLoadedViewTests(TestCase):
 
     def test_ticker_exists(self):
         Ticker.objects.create(symbol='TEST')
-        response = self.client.get(reverse('tickers:tickers_loaded'))
+        response = self.client.get(reverse('tickers_loaded'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.dumps(response.data),
@@ -78,7 +68,7 @@ class TickersLoadedViewTests(TestCase):
 class SearchTickerDataViewTests(TestCase):
 
     def test_no_ticker(self):
-        response = self.client.post(reverse('tickers:search_ticker_data'),
+        response = self.client.post(reverse('search_ticker_data'),
                                     content_type="application/json",
                                     data=json.dumps({'ticker': 'NOPE'}))
         self.assertEqual(response.status_code, 412)
@@ -89,7 +79,7 @@ class SearchTickerDataViewTests(TestCase):
 
     def test_ticker_exists_but_no_data(self):
         Ticker.objects.create(symbol='TEST')
-        response = self.client.post(reverse('tickers:search_ticker_data'),
+        response = self.client.post(reverse('search_ticker_data'),
                                     content_type="application/json",
                                     data=json.dumps({'ticker': 'TEST'}))
         self.assertEqual(response.status_code, 200)
@@ -111,7 +101,7 @@ class SearchTickerDataViewTests(TestCase):
         quote.sac_moving_average = rand_value()
         quote.sac_to_sacma_ratio = rand_value()
         quote.save()
-        response = self.client.post(reverse('tickers:search_ticker_data'),
+        response = self.client.post(reverse('search_ticker_data'),
                                     content_type="application/json",
                                     data=json.dumps({'ticker': 'TEST'}))
         self.assertEqual(response.status_code, 200)
@@ -126,7 +116,7 @@ class SearchTickerDataViewTests(TestCase):
 class GetRecommendationsViewTests(TestCase):
 
     def test_index_ticker_does_not_exist(self):
-        response = self.client.get(reverse('tickers:get_recommendations'))
+        response = self.client.get(reverse('get_recommendations'))
         self.assertEqual(response.status_code, 412)
         self.assertEqual(
             json.dumps(response.data),
@@ -135,7 +125,7 @@ class GetRecommendationsViewTests(TestCase):
 
     def test_no_quotes_available(self):
         Ticker.objects.create(symbol=settings.INDEX_TICKER)
-        response = self.client.get(reverse('tickers:get_recommendations'))
+        response = self.client.get(reverse('get_recommendations'))
         self.assertEqual(response.status_code, 412)
         self.assertEqual(
             json.dumps(response.data),
@@ -149,7 +139,7 @@ class GetRecommendationsViewTests(TestCase):
                                      date=datetime.today())
         quote.sac_to_sacma_ratio = 0.5
         quote.save()
-        response = self.client.get(reverse('tickers:get_recommendations'))
+        response = self.client.get(reverse('get_recommendations'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.dumps(response.data),
@@ -165,7 +155,7 @@ class GetRecommendationsViewTests(TestCase):
                                      date=datetime.today())
         quote.sac_to_sacma_ratio = 1.5
         quote.save()
-        response = self.client.get(reverse('tickers:get_recommendations'))
+        response = self.client.get(reverse('get_recommendations'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.dumps(response.data),

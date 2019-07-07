@@ -1,0 +1,59 @@
+version: '3.4'
+
+services:
+
+  django:
+    image: baseimage
+    container_name: local_dev_django
+    env_file:
+     - ../container_environments/test-stack.yaml
+    volumes:
+      - ../:/src
+    working_dir: /src/django/stockpicker
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    command: bash -c "wait-for-it.sh -t 60 postgres:5432 && python manage.py migrate && python manage.py load_tickers && python manage.py runserver 0.0.0.0:8000"
+
+  celery:
+    image: baseimage
+    container_name: local_dev_celery
+    env_file:
+     - ../container_environments/test-stack.yaml
+    environment:
+      C_FORCE_ROOT: "yes"
+    working_dir: /src/django/stockpicker
+    volumes:
+      - ../:/src
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+    command: bash -c "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"
+
+  redis:
+    image: redis
+    container_name: local_dev_redis
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  rabbitmq:
+    image: rabbitmq:3.6
+    container_name: local_dev_rabbitmq
+    env_file:
+     - ../container_environments/test-stack.yaml
+
+  postgres:
+    image: postgres:9.4
+    container_name: local_dev_postgres
+    env_file:
+     - ../container_environments/test-stack.yaml
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    external: false

@@ -7,6 +7,35 @@ from pandas_datareader._utils import RemoteDataError
 
 from tickers.models import Ticker, Quote
 
+#####
+# https://stackoverflow.com/a/36525605/2551686
+import datetime as dt
+
+from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, nearest_workday, \
+    USMartinLutherKingJr, USPresidentsDay, GoodFriday, USMemorialDay, \
+    USLaborDay, USThanksgivingDay
+
+
+class USTradingCalendar(AbstractHolidayCalendar):
+    rules = [
+        Holiday('NewYearsDay', month=1, day=1, observance=nearest_workday),
+        USMartinLutherKingJr,
+        USPresidentsDay,
+        GoodFriday,
+        USMemorialDay,
+        Holiday('USIndependenceDay', month=7, day=4, observance=nearest_workday),
+        USLaborDay,
+        USThanksgivingDay,
+        Holiday('Christmas', month=12, day=25, observance=nearest_workday)
+    ]
+
+
+def get_trading_close_holidays(year):
+    inst = USTradingCalendar()
+
+    return inst.holidays(dt.datetime(year - 1, 12, 31), dt.datetime(year, 12, 31))
+#####
+
 
 def update_ticker_data(symbol, force=False):
 
@@ -15,11 +44,13 @@ def update_ticker_data(symbol, force=False):
         ticker, _ = Ticker.objects.get_or_create(symbol=ticker_symbol)
 
         last_business_day = datetime.today().date()
+
+        if last_business_day.strftime('%Y-%m-%d') in get_trading_close_holidays(last_business_day.year):
+            last_business_day = last_business_day + timedelta(days=-1)
+
         # weekday() gives 0 for Monday through 6 for Sunday
         while last_business_day.weekday() > 4:
             last_business_day = last_business_day + timedelta(days=-1)
-
-        # if last_business_day > ticker.latest_quote_date():
 
         # don't waste work
         if force_update or ticker.latest_quote_date() is None or ticker.latest_quote_date() < last_business_day:

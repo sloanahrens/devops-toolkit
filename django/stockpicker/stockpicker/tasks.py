@@ -9,8 +9,6 @@ def celery_worker_health_check(self, timestamp):
 
     try:
         Ticker.objects.all().count()
-
     except ProgrammingError:
         return None
-
     return timestamp

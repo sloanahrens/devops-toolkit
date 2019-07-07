@@ -1,0 +1,37 @@
+version: '3.4'
+
+services:
+
+  django:
+    image: baseimage
+    container_name: local_dev_baseimage
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: domicile-comanche-audible-bighorn
+      POSTGRES_DB: db
+    volumes:
+      - ../:/src
+    working_dir: /src/django/stockpicker
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+    command: bash -c "wait-for-it.sh -t 60 postgres:5432 && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+  postgres:
+    image: postgres:9.4
+    container_name: local_dev_postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: domicile-comanche-audible-bighorn
+      POSTGRES_DB: db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    external: false

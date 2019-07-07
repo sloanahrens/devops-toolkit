@@ -24,8 +24,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '#==0gyur=je266&@1k4%9yv_*#h&(02c7%z4-hk#kg^3nc%310'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -110,14 +108,6 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-STATIC_URL = '/static/'
-STATIC_ROOT = '_static'
-
-
 #####
 # Database
 # # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
@@ -175,8 +165,20 @@ CELERY_BEAT_SCHEDULE = {
     'quotes-hourly-update': {
         'task': 'tickers.tasks.chained_ticker_updates',
         'schedule': crontab(hour="*/3", minute=0, day_of_week='mon,tue,wed,thu,fri'),
+        # for local development testing:
+        # 'schedule': crontab(hour="*", minute="*", day_of_week='*'),
     }
 }
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/2.2/howto/static-files/
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+STATIC_URL = '/static/'
+STATIC_ROOT = "/src/_static"
+
+
+# Allowed Hosts
+ALLOWED_HOSTS = ['*']
 
 
 #####
@@ -188,13 +190,15 @@ WEEKS_TO_DOWNLOAD = 260
 INDEX_TICKER = 'SPY'
 
 DEFAULT_TICKERS = [
-    'GOOG',
     'AMZN',
+    'GOOG',
     'FB',
-    'EBAY',
     'TWTR',
-    'IBM',
     'AAPL',
     'MSFT',
     'TSLA',
 ]
+
+# Debug setting
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv('APP_DEBUG', False)

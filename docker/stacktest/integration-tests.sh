@@ -34,8 +34,8 @@ function wait_for_and_test_endpoint {
 
 echo "SERVICE: $SERVICE"
 
+wait_for_and_test_endpoint "$SERVICE/health/app/"
 wait_for_and_test_endpoint "$SERVICE/health/database/"
-
 wait_for_and_test_endpoint "$SERVICE/health/celery/"
-
 wait_for_and_test_endpoint "$SERVICE/health/tickers-loaded/"
+wait_for_and_test_endpoint "$SERVICE/health/quotes-updated/"

@@ -1,4 +1,3 @@
-from django.views.generic import TemplateView
 from django.conf import settings
 
 from rest_framework.views import APIView
@@ -9,11 +8,6 @@ from rest_framework.permissions import AllowAny
 
 from tickers.models import Ticker, Quote
 from tickers.utility import update_ticker_data
-
-
-class PickerPageView(TemplateView):
-
-    template_name = 'tickers/picker.html'
 
 
 class SearchTickerDataView(APIView):

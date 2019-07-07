@@ -1,5 +1,7 @@
 FROM baseimage
 
+ENV C_FORCE_ROOT true
+
 WORKDIR /src
 
 COPY ./django/stockpicker/stockpicker /src/stockpicker

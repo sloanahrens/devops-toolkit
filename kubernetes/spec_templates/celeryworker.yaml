@@ -35,7 +35,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: worker
-        image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celeryworker:IMAGE_TAG
+        image: 421987441365.dkr.ecr.us-east-2.amazonaws.com/stockpicker/celery:IMAGE_TAG
         imagePullPolicy: Always
         envFrom:
         - configMapRef:
@@ -47,3 +47,5 @@ spec:
           value: IMAGE_TAG
         - name: ENVFILE
           value: ENV_FILE
+        command: ["/bin/bash"]
+        args: ["-c", "celery worker -O fair -c 1 --app=stockpicker.celery --loglevel=info"]
