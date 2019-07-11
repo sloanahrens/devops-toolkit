@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 function wait_for_and_test_endpoint {
     period=10
     limit=24
@@ -30,7 +29,6 @@ function wait_for_and_test_endpoint {
       echo "Test Pass: $1"
     fi
 }
-
 
 echo "SERVICE: $SERVICE"
 
