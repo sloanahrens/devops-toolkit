@@ -17,13 +17,20 @@ from stockpicker.tasks import celery_worker_health_check
 
 class PickerPageView(TemplateView):
 
-    template_name = 'picker.html'
+    template_name = 'tickers/picker.html'
 
 
 class AppHealthCheckView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({'status': 'healthy'})
+
+
+def postgres_error_response(err):
+    return Response(data={'status': 'unhealthy',
+                          'reason': 'database query failed (ProgrammingError)',
+                          'exception': str(err)},
+                    status=HTTP_412_PRECONDITION_FAILED)
 
 
 class DatabaseHealthCheckView(APIView):
@@ -36,12 +43,8 @@ class DatabaseHealthCheckView(APIView):
             ticker_count = Ticker.objects.all().count()
             return Response({'status': 'healthy',
                              'ticker_count': ticker_count})
-
         except ProgrammingError as e:
-            Response(data={'status': 'unhealthy',
-                           'reason': 'database query failed (ProgrammingError)',
-                           'exception': str(e)},
-                     status=HTTP_412_PRECONDITION_FAILED)
+            return postgres_error_response(e)
 
 
 class CeleryHealthCheckView(APIView):
@@ -50,25 +53,22 @@ class CeleryHealthCheckView(APIView):
 
     def get(self, request, *args, **kwargs):
         current_datetime = now().strftime('%c')
-        task = celery_worker_health_check.delay(current_datetime)
         try:
-            #  Trigger a health check job (run db query from the worker).
+            # trigger a health check job (run db query from the worker).
+            task = celery_worker_health_check.delay(current_datetime)
             result = task.get(timeout=6)
-        except TimeoutError as e:
+        except TimeoutError:
             return Response(
                 data={'status': 'unhealthy',
-                      'reason': 'celery job failed (TimeoutError)',
-                      'exception': str(e)},
+                      'reason': 'celery job failed (TimeoutError)'},
                 status=HTTP_412_PRECONDITION_FAILED)
         try:
             assert result == current_datetime
-        except AssertionError as e:
+        except AssertionError:
             return Response(
                 data={'status': 'unhealthy',
-                      'reason': 'celery job failed (AssertionError)',
-                      'exception': str(e)},
+                      'reason': 'celery job failed (AssertionError)'},
                 status=HTTP_412_PRECONDITION_FAILED)
-
         return Response({'status': 'healthy'})
 
 
@@ -84,18 +84,13 @@ class TickersLoadedHealthCheckView(APIView):
                 assert Ticker.objects.filter(symbol=ticker).exists()
             return Response({'status': 'healthy',
                              'ticker_count': Ticker.objects.all().count()})
-        except AssertionError as e:
+        except AssertionError:
             return Response(
                 data={'status': 'unhealthy',
-                      'reason': 'tickers not loaded (AssertionError)',
-                      'exception': str(e)},
+                      'reason': 'tickers not loaded (AssertionError)'},
                 status=HTTP_412_PRECONDITION_FAILED)
         except ProgrammingError as e:
-            return Response(
-                data={'status': 'unhealthy',
-                      'reason': 'database query failed (ProgrammingError)',
-                      'exception': str(e)},
-                status=HTTP_412_PRECONDITION_FAILED)
+            return postgres_error_response(e)
 
 
 class QuotesUpdatedHealthCheckView(APIView):
@@ -108,22 +103,16 @@ class QuotesUpdatedHealthCheckView(APIView):
             for ticker in [settings.INDEX_TICKER] + [t for t in settings.DEFAULT_TICKERS]:
                 assert Ticker.objects.get(symbol=ticker).latest_quote_date() is not None
             return Response({'status': 'healthy',
-                             'quotes_count': Quote.objects.all().count()})
-        except AssertionError as e:
+                             'quote_count': Quote.objects.all().count()})
+        except AssertionError:
             return Response(
                 data={'status': 'unhealthy',
-                      'reason': 'quotes not updated (AssertionError)',
-                      'exception': str(e)},
+                      'reason': 'quotes not updated (AssertionError)'},
                 status=HTTP_412_PRECONDITION_FAILED)
-        except Ticker.DoesNotExist as e:
+        except Ticker.DoesNotExist:
             return Response(
                 data={'status': 'unhealthy',
-                      'reason': 'tickers not loaded (DoesNotExist)',
-                      'exception': str(e)},
+                      'reason': 'tickers not loaded (DoesNotExist)'},
                 status=HTTP_412_PRECONDITION_FAILED)
         except ProgrammingError as e:
-            return Response(
-                data={'status': 'unhealthy',
-                      'reason': 'database query failed (ProgrammingError)',
-                      'exception': str(e)},
-                status=HTTP_412_PRECONDITION_FAILED)
+            return postgres_error_response(e)
