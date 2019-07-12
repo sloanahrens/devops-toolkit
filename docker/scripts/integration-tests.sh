@@ -2,7 +2,7 @@
 
 function wait_for_and_test_endpoint {
     period=10
-    limit=24
+    limit=30
     looper=${limit}
     # wait for the app to be all hooked up and working
     url="$1"

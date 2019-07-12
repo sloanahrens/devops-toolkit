@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
 
-from tickers.models import Ticker
+from tickers.models import Ticker, Quote
 from stockpicker.tasks import celery_worker_health_check
 
 
@@ -82,7 +82,8 @@ class TickersLoadedHealthCheckView(APIView):
             assert Ticker.objects.filter(symbol=settings.INDEX_TICKER).exists()
             for ticker in settings.DEFAULT_TICKERS:
                 assert Ticker.objects.filter(symbol=ticker).exists()
-            return Response({'status': 'healthy', 'ticker_count': Ticker.objects.all().count()})
+            return Response({'status': 'healthy',
+                             'ticker_count': Ticker.objects.all().count()})
         except AssertionError as e:
             return Response(
                 data={'status': 'unhealthy',
@@ -106,7 +107,8 @@ class QuotesUpdatedHealthCheckView(APIView):
             # make sure all the quotes have been updated
             for ticker in [settings.INDEX_TICKER] + [t for t in settings.DEFAULT_TICKERS]:
                 assert Ticker.objects.get(symbol=ticker).latest_quote_date() is not None
-            return Response({'status': 'healthy', 'ticker_count': Ticker.objects.all().count()})
+            return Response({'status': 'healthy',
+                             'quotes_count': Quote.objects.all().count()})
         except AssertionError as e:
             return Response(
                 data={'status': 'unhealthy',
