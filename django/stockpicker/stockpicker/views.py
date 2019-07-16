@@ -17,7 +17,7 @@ from stockpicker.tasks import celery_worker_health_check
 
 class PickerPageView(TemplateView):
 
-    template_name = 'tickers/picker.html'
+    template_name = 'picker.html'
 
 
 class AppHealthCheckView(APIView):

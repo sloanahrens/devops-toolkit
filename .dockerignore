@@ -2,10 +2,8 @@
 ci_scripts
 django/venv
 kubernetes
-kube-prometheus
 tutorials
 source
-source_first
 src
 _static
 db.sqlite3

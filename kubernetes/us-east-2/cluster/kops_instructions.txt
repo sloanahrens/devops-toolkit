@@ -25,7 +25,7 @@ terraform apply --auto-approve
 cd $REGION/cluster
 
 # create keys
-aws ec2 create-key-pair --key-name $REGION | jq -r '.KeyMaterial' >$REGION.pem
+aws ec2 create-key-pair --key-name $REGION --region $REGION | jq -r '.KeyMaterial' >$REGION.pem
 
 chmod 400 $REGION.pem
 
@@ -172,7 +172,7 @@ kubectl proxy
 cd kubernetes/$REGION/cluster/ && export KUBECONFIG=$PWD/kubecfg.yaml && cd ../../..
 
 STACK_NAME=devtest
-IMAGE_TAG=build-k8s-cluster
+IMAGE_TAG=master
 ENV_FILE=test-stack.yaml
 
 ./ci_scripts/deploy_k8s_app_stack.sh $STACK_NAME $IMAGE_TAG $ENV_FILE 1 1
