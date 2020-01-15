@@ -277,16 +277,16 @@ resource "aws_internet_gateway" "devops-toolkit-us-east-2-k8s-local" {
   }
 }
 
-resource "aws_key_pair" "kubernetes-devops-toolkit-us-east-2-k8s-local-7585ac2a94d1c707f159682ffefd6a74" {
-  key_name   = "kubernetes.devops-toolkit-us-east-2.k8s.local-75:85:ac:2a:94:d1:c7:07:f1:59:68:2f:fe:fd:6a:74"
-  public_key = "${file("${path.module}/data/aws_key_pair_kubernetes.devops-toolkit-us-east-2.k8s.local-7585ac2a94d1c707f159682ffefd6a74_public_key")}"
+resource "aws_key_pair" "kubernetes-devops-toolkit-us-east-2-k8s-local-cffc5222ba9ee06779665334e99b4d70" {
+  key_name   = "kubernetes.devops-toolkit-us-east-2.k8s.local-cf:fc:52:22:ba:9e:e0:67:79:66:53:34:e9:9b:4d:70"
+  public_key = "${file("${path.module}/data/aws_key_pair_kubernetes.devops-toolkit-us-east-2.k8s.local-cffc5222ba9ee06779665334e99b4d70_public_key")}"
 }
 
 resource "aws_launch_configuration" "master-us-east-2b-masters-devops-toolkit-us-east-2-k8s-local" {
   name_prefix                 = "master-us-east-2b.masters.devops-toolkit-us-east-2.k8s.local-"
-  image_id                    = "ami-033476a646ce264ac"
+  image_id                    = "ami-0139092b537d66a7b"
   instance_type               = "c4.large"
-  key_name                    = "${aws_key_pair.kubernetes-devops-toolkit-us-east-2-k8s-local-7585ac2a94d1c707f159682ffefd6a74.id}"
+  key_name                    = "${aws_key_pair.kubernetes-devops-toolkit-us-east-2-k8s-local-cffc5222ba9ee06779665334e99b4d70.id}"
   iam_instance_profile        = "${aws_iam_instance_profile.masters-devops-toolkit-us-east-2-k8s-local.id}"
   security_groups             = ["${aws_security_group.masters-devops-toolkit-us-east-2-k8s-local.id}"]
   associate_public_ip_address = false
@@ -307,9 +307,9 @@ resource "aws_launch_configuration" "master-us-east-2b-masters-devops-toolkit-us
 
 resource "aws_launch_configuration" "nodes-devops-toolkit-us-east-2-k8s-local" {
   name_prefix                 = "nodes.devops-toolkit-us-east-2.k8s.local-"
-  image_id                    = "ami-033476a646ce264ac"
+  image_id                    = "ami-0139092b537d66a7b"
   instance_type               = "t2.medium"
-  key_name                    = "${aws_key_pair.kubernetes-devops-toolkit-us-east-2-k8s-local-7585ac2a94d1c707f159682ffefd6a74.id}"
+  key_name                    = "${aws_key_pair.kubernetes-devops-toolkit-us-east-2-k8s-local-cffc5222ba9ee06779665334e99b4d70.id}"
   iam_instance_profile        = "${aws_iam_instance_profile.nodes-devops-toolkit-us-east-2-k8s-local.id}"
   security_groups             = ["${aws_security_group.nodes-devops-toolkit-us-east-2-k8s-local.id}"]
   associate_public_ip_address = false
