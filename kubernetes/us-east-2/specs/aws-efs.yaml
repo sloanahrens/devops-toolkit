@@ -48,7 +48,7 @@ metadata:
   labels:
     stack: cluster
 data:
-  file.system.id: fs-e0531199
+  file.system.id: fs-d1302aa8
   aws.region: us-east-2
   provisioner.name: example.com/aws-efs
 ---
@@ -93,7 +93,7 @@ spec:
       volumes:
         - name: pv-volume
           nfs:
-            server: fs-e0531199.efs.us-east-2.amazonaws.com
+            server: fs-d1302aa8.efs.us-east-2.amazonaws.com
             path: /
 ---
 kind: StorageClass
