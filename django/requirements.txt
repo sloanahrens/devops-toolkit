@@ -29,7 +29,7 @@ pycodestyle==2.5.0
 pyflakes==2.1.1
 python-dateutil==2.8.1
 pytz==2019.1
-PyYAML==5.2
+PyYAML==5.4
 redis==3.3.11
 requests==2.22.0
 rsa==3.4.2
